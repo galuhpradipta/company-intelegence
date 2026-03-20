@@ -1,0 +1,19 @@
+{
+	"name": "viteplus-cf-template",
+	"compatibility_date": "2025-01-01",
+	"pages_build_output_dir": "dist",
+	"d1_databases": [
+		{
+			"binding": "DB",
+			"database_name": "app-db",
+			"database_id": "",
+			"migrations_dir": "drizzle/migrations"
+		}
+	],
+	"r2_buckets": [
+		{
+			"binding": "ASSETS",
+			"bucket_name": "app-assets"
+		}
+	]
+}

@@ -1,0 +1,249 @@
+@import "tailwindcss";
+
+/* ================================================
+   APP DESIGN SYSTEM — viteplus-cf-template
+   Neutral dark theme with blue accent.
+   Rename "app-*" tokens to match your brand.
+   ================================================ */
+
+@theme {
+  --font-display: ui-sans-serif, system-ui, sans-serif;
+  --font-body: ui-sans-serif, system-ui, sans-serif;
+
+  --color-app-bg: #0a0a0f;
+  --color-app-surface: #141419;
+  --color-app-surface-hover: #1a1a22;
+  --color-app-surface-raised: #1e1e28;
+  --color-app-border: rgba(99, 149, 255, 0.12);
+  --color-app-border-subtle: rgba(255, 255, 255, 0.06);
+  --color-app-accent: #3b82f6;
+  --color-app-accent-light: #60a5fa;
+  --color-app-accent-dim: #1d4ed8;
+  --color-app-text: #e4e4e7;
+  --color-app-text-muted: #71717a;
+  --color-app-text-dim: #52525b;
+  --color-app-red: #ef4444;
+  --color-app-green: #22c55e;
+}
+
+*,
+*::before,
+*::after {
+  box-sizing: border-box;
+}
+
+body {
+  margin: 0;
+  font-family: var(--font-body);
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+  background-color: #050508;
+  color: var(--color-app-text);
+}
+
+#root {
+  max-width: 430px;
+  margin: 0 auto;
+  min-height: 100svh;
+  display: flex;
+  flex-direction: column;
+  background-color: var(--color-app-bg);
+  box-shadow:
+    0 0 40px rgba(59, 130, 246, 0.04),
+    0 0 1px rgba(255, 255, 255, 0.06);
+}
+
+@media (min-width: 768px) {
+  #root {
+    max-width: 960px;
+  }
+}
+
+/* ------------------------------------------------ Backgrounds */
+.app-bg {
+  background-color: var(--color-app-bg);
+  background-image:
+    radial-gradient(ellipse at 50% 0%, rgba(59, 130, 246, 0.04) 0%, transparent 60%),
+    url("data:image/svg+xml,%3Csvg viewBox='0 0 256 256' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='noise'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23noise)' opacity='0.02'/%3E%3C/svg%3E");
+}
+
+/* ------------------------------------------------ Glass panels */
+.glass-panel {
+  background: rgba(20, 20, 25, 0.96);
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.03);
+  border-left: 1px solid rgba(59, 130, 246, 0.08);
+}
+
+.glass-panel-bottom {
+  background: rgba(20, 20, 25, 0.97);
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.03);
+  border-top: 1px solid rgba(59, 130, 246, 0.12);
+  border-radius: 16px 16px 0 0;
+}
+
+/* ------------------------------------------------ Touch targets */
+.touch-target-44 {
+  min-width: 44px;
+  min-height: 44px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+/* ------------------------------------------------ Header */
+.header-glass {
+  background:
+    linear-gradient(180deg, rgba(59, 130, 246, 0.03) 0%, transparent 2px, transparent 100%),
+    linear-gradient(180deg, rgba(20, 20, 25, 0.97) 0%, rgba(20, 20, 25, 0.9) 100%);
+  box-shadow:
+    0 1px 0 rgba(59, 130, 246, 0.08),
+    0 4px 24px rgba(0, 0, 0, 0.5);
+}
+
+/* ------------------------------------------------ Navigation */
+.bottom-nav {
+  position: fixed;
+  bottom: 0;
+  left: 0;
+  right: 0;
+  max-width: 430px;
+  margin-left: auto;
+  margin-right: auto;
+  z-index: 40;
+  padding-bottom: env(safe-area-inset-bottom, 0px);
+}
+
+@media (min-width: 768px) {
+  .bottom-nav {
+    max-width: 960px;
+  }
+}
+
+.nav-link-icon {
+  transition:
+    transform 0.2s ease,
+    filter 0.2s ease;
+}
+
+.nav-link-icon-active {
+  filter: drop-shadow(0 0 4px rgba(59, 130, 246, 0.45));
+}
+
+/* ------------------------------------------------ Scrollbars */
+.scrollbar-none::-webkit-scrollbar {
+  display: none;
+}
+
+.scrollbar-none {
+  scrollbar-width: none;
+}
+
+::-webkit-scrollbar {
+  width: 6px;
+}
+
+::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+::-webkit-scrollbar-thumb {
+  background: rgba(59, 130, 246, 0.15);
+  border-radius: 3px;
+}
+
+::-webkit-scrollbar-thumb:hover {
+  background: rgba(59, 130, 246, 0.3);
+}
+
+* {
+  scrollbar-width: thin;
+  scrollbar-color: rgba(59, 130, 246, 0.15) transparent;
+}
+
+/* ------------------------------------------------ Animations */
+@keyframes pulse-accent {
+  0%,
+  100% {
+    opacity: 0.5;
+  }
+  50% {
+    opacity: 1;
+  }
+}
+
+@keyframes float-subtle {
+  0%,
+  100% {
+    transform: translateY(0);
+  }
+  50% {
+    transform: translateY(-3px);
+  }
+}
+
+@keyframes float {
+  0%,
+  100% {
+    transform: translateY(0);
+  }
+  50% {
+    transform: translateY(-6px);
+  }
+}
+
+@keyframes slide-up {
+  from {
+    transform: translateY(100%);
+  }
+  to {
+    transform: translateY(0);
+  }
+}
+
+@keyframes overlay-fade-in {
+  from {
+    opacity: 0;
+  }
+  to {
+    opacity: 1;
+  }
+}
+
+.animate-pulse-accent {
+  position: relative;
+}
+
+.animate-pulse-accent::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  border-radius: inherit;
+  box-shadow:
+    0 0 20px rgba(59, 130, 246, 0.5),
+    0 0 50px rgba(59, 130, 246, 0.2);
+  animation: pulse-accent 2s ease-in-out infinite;
+  pointer-events: none;
+  will-change: opacity;
+}
+
+.animate-float {
+  animation: float 3s ease-in-out infinite;
+}
+
+.animate-slide-up {
+  animation: slide-up 0.3s ease-out both;
+}
+
+.animate-overlay-fade-in {
+  animation: overlay-fade-in 150ms ease-out;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .animate-pulse-accent::after,
+  .animate-float,
+  .animate-slide-up,
+  .animate-overlay-fade-in,
+  .nav-link-icon-active {
+    animation: none !important;
+  }
+}
