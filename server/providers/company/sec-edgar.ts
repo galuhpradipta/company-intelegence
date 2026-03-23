@@ -4,45 +4,33 @@ import { env } from '../../env.js'
 /**
  * SEC EDGAR company search provider.
  * Completely free, no API key required.
- * US-only, registry-level data: legal name, CIK, state of incorporation, SIC industry.
- * EDGAR requires a descriptive User-Agent per their fair-use policy.
+ * Uses the SEC's JSON datasets rather than the browse-edgar Atom output, which is
+ * currently too inconsistent to parse reliably for company metadata.
  */
 export class SecEdgarProvider implements CompanyProvider {
   name = 'sec_edgar'
   reliabilityFactor = 1.0
 
   async search(input: NormalizedInput): Promise<CandidateCompany[]> {
-    const params = new URLSearchParams({
-      company: input.companyName,
-      CIK: '',
-      type: '10-K',
-      dateb: '',
-      owner: 'include',
-      count: '10',
-      search_text: '',
-      action: 'getcompany',
-      output: 'atom',
-    })
-
-    const url = `https://www.sec.gov/cgi-bin/browse-edgar?${params}`
+    if (input.country && input.country !== 'US') {
+      return []
+    }
 
     try {
-      const res = await fetch(url, {
-        signal: AbortSignal.timeout(env.PROVIDER_TIMEOUT_MS),
-        headers: {
-          // EDGAR fair-use policy requires identifying User-Agent
-          'User-Agent': 'merclex-company-intelligence contact@merclex.com',
-          Accept: 'application/atom+xml',
-        },
-      })
+      const tickers = await getSecTickers()
+      const matches = tickers
+        .map((entry) => ({ entry, score: scoreTickerEntry(entry, input) }))
+        .filter(({ score }) => score > 0)
+        .sort((a, b) => b.score - a.score)
+        .slice(0, 5)
 
-      if (!res.ok) {
-        console.warn(`[SecEdgar] API error ${res.status}`)
-        return []
-      }
+      const submissions = await Promise.all(
+        matches.map(({ entry }) => fetchCompanySubmission(entry.cik_str))
+      )
 
-      const xml = await res.text()
-      return parseEdgarAtom(xml)
+      return submissions.flatMap((submission, index) =>
+        submission ? [toCandidate(submission, matches[index].entry)] : []
+      )
     } catch (err) {
       console.warn('[SecEdgar] Request failed:', err)
       return []
@@ -50,46 +38,146 @@ export class SecEdgarProvider implements CompanyProvider {
   }
 }
 
-function extractTag(xml: string, tag: string): string | undefined {
-  const match = xml.match(new RegExp(`<${tag}[^>]*>([^<]+)<\\/${tag}>`))
-  return match?.[1]?.trim() || undefined
+interface SecTickerEntry {
+  cik_str: number
+  ticker: string
+  title: string
 }
 
-function parseEdgarAtom(xml: string): CandidateCompany[] {
-  const results: CandidateCompany[] = []
-  const seen = new Set<string>()
+interface SecSubmission {
+  cik: string
+  name: string
+  sicDescription?: string
+  website?: string
+  phone?: string
+  tickers?: string[]
+  addresses?: {
+    business?: {
+      city?: string | null
+      stateOrCountry?: string | null
+      zipCode?: string | null
+    }
+  }
+  formerNames?: Array<{ name?: string }>
+}
 
-  // Each <entry> block in the EDGAR Atom feed represents one matching company
-  const entries = xml.matchAll(/<entry>([\s\S]*?)<\/entry>/g)
+const SEC_HEADERS = {
+  'User-Agent': 'merclex-company-intelligence contact@merclex.com',
+  Accept: 'application/json',
+}
 
-  for (const [, entry] of entries) {
-    const legalName = extractTag(entry, 'company-name')
-    const cik = extractTag(entry, 'cik')
+const SEC_TICKERS_URL = 'https://www.sec.gov/files/company_tickers.json'
+const SEC_SUBMISSIONS_URL = (cik: string) => `https://data.sec.gov/submissions/CIK${cik.padStart(10, '0')}.json`
+const TICKER_CACHE_TTL_MS = 1000 * 60 * 60 * 6
 
-    if (!legalName) continue
+let tickerCache: SecTickerEntry[] | null = null
+let tickerCacheExpiresAt = 0
+let tickerCachePromise: Promise<SecTickerEntry[]> | null = null
 
-    // Deduplicate by CIK — multiple 10-K filings may appear for the same company
-    const key = cik ?? legalName
-    if (seen.has(key)) continue
-    seen.add(key)
-
-    const stateOfInc = extractTag(entry, 'state-of-inc')
-    const sicDesc = extractTag(entry, 'assigned-sic-desc')
-    const ein = extractTag(entry, 'ein')
-
-    results.push({
-      providerName: 'sec_edgar',
-      providerRecordId: cik,
-      displayName: legalName,
-      legalName,
-      industry: sicDesc,
-      hqState: stateOfInc,
-      hqCountry: 'US',
-      rawPayload: { legalName, cik, stateOfInc, sicDesc, ein },
-    })
-
-    if (results.length >= 5) break
+async function getSecTickers(): Promise<SecTickerEntry[]> {
+  const now = Date.now()
+  if (tickerCache && tickerCacheExpiresAt > now) {
+    return tickerCache
+  }
+  if (tickerCachePromise) {
+    return tickerCachePromise
   }
 
-  return results
+  tickerCachePromise = fetch(SEC_TICKERS_URL, {
+    signal: AbortSignal.timeout(env.PROVIDER_TIMEOUT_MS),
+    headers: SEC_HEADERS,
+  })
+    .then(async (res) => {
+      if (!res.ok) {
+        throw new Error(`SEC ticker index error ${res.status}`)
+      }
+      const data = await res.json() as Record<string, SecTickerEntry>
+      return Object.values(data)
+    })
+    .then((records) => {
+      tickerCache = records
+      tickerCacheExpiresAt = Date.now() + TICKER_CACHE_TTL_MS
+      return records
+    })
+    .finally(() => {
+      tickerCachePromise = null
+    })
+
+  return tickerCachePromise
+}
+
+async function fetchCompanySubmission(cik: number): Promise<SecSubmission | null> {
+  const res = await fetch(SEC_SUBMISSIONS_URL(String(cik)), {
+    signal: AbortSignal.timeout(env.PROVIDER_TIMEOUT_MS),
+    headers: SEC_HEADERS,
+  })
+  if (!res.ok) {
+    console.warn(`[SecEdgar] Submission lookup failed for CIK ${cik}: ${res.status}`)
+    return null
+  }
+  return res.json() as Promise<SecSubmission>
+}
+
+const LEGAL_SUFFIXES = /\b(inc|llc|ltd|corp|co|plc|gmbh|ag|sa|sas|bv|nv|pty|limited|incorporated)\b\.?/gi
+
+function normalizeName(value: string): string {
+  return value
+    .toLowerCase()
+    .replace(/[/.(),-]/g, ' ')
+    .replace(LEGAL_SUFFIXES, ' ')
+    .replace(/\s+/g, ' ')
+    .trim()
+}
+
+function tokenize(value: string): string[] {
+  return normalizeName(value).split(' ').filter((token) => token.length > 1)
+}
+
+function jaccardSimilarity(a: string[], b: string[]): number {
+  const setA = new Set(a)
+  const setB = new Set(b)
+  const intersection = [...setA].filter((token) => setB.has(token)).length
+  const union = new Set([...setA, ...setB]).size
+  return union === 0 ? 0 : intersection / union
+}
+
+function scoreTickerEntry(entry: SecTickerEntry, input: NormalizedInput): number {
+  const normalizedTitle = normalizeName(entry.title)
+  if (!normalizedTitle) return 0
+
+  if (normalizedTitle === input.companyName) {
+    return 100
+  }
+  if (entry.ticker.toLowerCase() === input.companyName) {
+    return 95
+  }
+  if (normalizedTitle.startsWith(`${input.companyName} `) || normalizedTitle.includes(` ${input.companyName} `)) {
+    return 85
+  }
+
+  const score = Math.round(jaccardSimilarity(tokenize(entry.title), input.nameParts) * 70)
+  return score >= 20 ? score : 0
+}
+
+function toCandidate(submission: SecSubmission, entry: SecTickerEntry): CandidateCompany {
+  return {
+    providerName: 'sec_edgar',
+    providerRecordId: submission.cik,
+    displayName: submission.name ?? entry.title,
+    legalName: submission.name ?? entry.title,
+    domain: submission.website || undefined,
+    industry: submission.sicDescription || undefined,
+    hqCity: submission.addresses?.business?.city ?? undefined,
+    hqState: submission.addresses?.business?.stateOrCountry ?? undefined,
+    hqCountry: 'US',
+    aliases: submission.formerNames?.map((item) => item.name).filter((value): value is string => Boolean(value)),
+    rawPayload: {
+      cik: submission.cik,
+      ticker: entry.ticker,
+      title: entry.title,
+      sicDescription: submission.sicDescription,
+      addresses: submission.addresses,
+      formerNames: submission.formerNames,
+    },
+  }
 }

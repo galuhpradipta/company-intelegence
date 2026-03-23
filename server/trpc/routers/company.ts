@@ -3,7 +3,7 @@ import { router, publicProcedure } from '../trpc.js'
 import { resolveCompany } from '../../services/company-resolution/index.js'
 import { db } from '../../db/client.js'
 import { companies, companySourceRecords, companyMatches, companyIdentifiers } from '../../db/schema/index.js'
-import { eq } from 'drizzle-orm'
+import { and, eq } from 'drizzle-orm'
 
 const companyInputSchema = z.object({
   companyName: z.string().min(1),
@@ -37,9 +37,10 @@ export const companyRouter = router({
       await db
         .update(companyMatches)
         .set({ selected: true })
-        .where(
-          eq(companyMatches.resolutionInputId, input.resolutionInputId)
-        )
+        .where(and(
+          eq(companyMatches.resolutionInputId, input.resolutionInputId),
+          eq(companyMatches.companyId, input.companyId)
+        ))
 
       const company = await db.query.companies.findFirst({
         where: eq(companies.id, input.companyId),

@@ -3,20 +3,51 @@ import type { CompanyProvider, CandidateCompany, NormalizedInput } from './types
 import { env } from '../../env.js'
 import { z } from 'zod'
 
+export const aiFallbackResponseSchema = {
+  type: 'object',
+  properties: {
+    candidates: {
+      type: 'array',
+      items: {
+        type: 'object',
+        properties: {
+          displayName: { type: 'string' },
+          legalName: { type: 'string' },
+          domain: { type: 'string' },
+          industry: { type: 'string' },
+          hqCity: { type: 'string' },
+          hqState: { type: 'string' },
+          hqCountry: { type: 'string' },
+          confidence: { type: 'number' },
+        },
+        required: ['displayName', 'legalName', 'domain', 'industry', 'hqCity', 'hqState', 'hqCountry', 'confidence'],
+        additionalProperties: false,
+      },
+    },
+  },
+  required: ['candidates'],
+  additionalProperties: false,
+} as const
+
 const candidateSchema = z.object({
   candidates: z.array(
     z.object({
       displayName: z.string(),
-      legalName: z.string().optional(),
-      domain: z.string().optional(),
-      industry: z.string().optional(),
-      hqCity: z.string().optional(),
-      hqState: z.string().optional(),
-      hqCountry: z.string().optional(),
+      legalName: z.string(),
+      domain: z.string(),
+      industry: z.string(),
+      hqCity: z.string(),
+      hqState: z.string(),
+      hqCountry: z.string(),
       confidence: z.number().min(0).max(100),
     })
   ),
 })
+
+export function normalizeOptionalText(value: string): string | undefined {
+  const normalized = value.trim()
+  return normalized ? normalized : undefined
+}
 
 /**
  * AI fallback provider — used when deterministic providers return no results.
@@ -41,36 +72,13 @@ ${input.city ? `City: ${input.city}` : ''}
 ${input.country ? `Country: ${input.country}` : ''}
 ${input.industry ? `Industry: ${input.industry}` : ''}
 
-Return up to 3 candidate matches with confidence scores (0-100). Only include companies you are highly confident about.`,
+Return up to 3 candidate matches with confidence scores (0-100). Only include companies you are highly confident about.
+Use empty strings for any unknown string field.`,
         text: {
           format: {
             type: 'json_schema',
             name: 'company_candidates',
-            schema: {
-              type: 'object',
-              properties: {
-                candidates: {
-                  type: 'array',
-                  items: {
-                    type: 'object',
-                    properties: {
-                      displayName: { type: 'string' },
-                      legalName: { type: 'string' },
-                      domain: { type: 'string' },
-                      industry: { type: 'string' },
-                      hqCity: { type: 'string' },
-                      hqState: { type: 'string' },
-                      hqCountry: { type: 'string' },
-                      confidence: { type: 'number' },
-                    },
-                    required: ['displayName', 'confidence'],
-                    additionalProperties: false,
-                  },
-                },
-              },
-              required: ['candidates'],
-              additionalProperties: false,
-            },
+            schema: aiFallbackResponseSchema,
             strict: true,
           },
         },
@@ -82,12 +90,12 @@ Return up to 3 candidate matches with confidence scores (0-100). Only include co
       return parsed.candidates.map((c) => ({
         providerName: this.name,
         displayName: c.displayName,
-        legalName: c.legalName,
-        domain: c.domain,
-        industry: c.industry,
-        hqCity: c.hqCity,
-        hqState: c.hqState,
-        hqCountry: c.hqCountry,
+        legalName: normalizeOptionalText(c.legalName),
+        domain: normalizeOptionalText(c.domain),
+        industry: normalizeOptionalText(c.industry),
+        hqCity: normalizeOptionalText(c.hqCity),
+        hqState: normalizeOptionalText(c.hqState),
+        hqCountry: normalizeOptionalText(c.hqCountry),
         rawPayload: c as Record<string, unknown>,
       }))
     } catch (err) {

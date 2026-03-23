@@ -16,8 +16,9 @@ export class GNewsProvider implements NewsProvider {
       from: fromDate.toISOString(),
       to: toDate.toISOString(),
       lang: 'en',
-      max: '30',
-      token: apiKey,
+      max: '10',
+      apikey: apiKey,
+      sortby: 'relevance',
     })
 
     const url = `https://gnews.io/api/v4/search?${params}`

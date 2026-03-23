@@ -4,7 +4,7 @@ import { z } from 'zod'
 import { resolveCompany } from '../services/company-resolution/index.js'
 import { db } from '../db/client.js'
 import { companies, companySourceRecords, companyIdentifiers, companyMatches } from '../db/schema/index.js'
-import { eq } from 'drizzle-orm'
+import { and, eq } from 'drizzle-orm'
 
 export const companyRoute = new Hono()
 
@@ -43,7 +43,10 @@ companyRoute.post(
     await db
       .update(companyMatches)
       .set({ selected: true })
-      .where(eq(companyMatches.companyId, companyId))
+      .where(and(
+        eq(companyMatches.resolutionInputId, resolutionInputId),
+        eq(companyMatches.companyId, companyId)
+      ))
 
     const company = await db.query.companies.findFirst({
       where: eq(companies.id, companyId),

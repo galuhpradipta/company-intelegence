@@ -12,44 +12,50 @@ export class PeopleDataLabsProvider implements CompanyProvider {
       return []
     }
 
-    const params = new URLSearchParams({
-      api_key: apiKey,
-      name: input.companyName,
-      ...(input.domain ? { website: input.domain } : {}),
-      ...(input.country ? { country: input.country } : {}),
-      size: '5',
-    })
+    const params = new URLSearchParams()
+    if (input.domain) params.set('website', input.domain)
+    if (input.companyName) params.set('name', input.companyName)
+    if (input.city) params.set('locality', input.city)
+    if (input.state) params.set('region', input.state)
+    if (input.country) params.set('country', input.country)
 
-    const url = `https://api.peopledatalabs.com/v5/company/search?${params}`
+    const url = `https://api.peopledatalabs.com/v5/company/enrich?${params}`
     const res = await fetch(url, {
       signal: AbortSignal.timeout(env.PROVIDER_TIMEOUT_MS),
+      headers: {
+        'X-Api-Key': apiKey,
+        Accept: 'application/json',
+      },
     })
 
     if (res.status === 401 || res.status === 403) {
       console.warn('[PeopleDataLabs] Authentication failed. Check PEOPLE_DATA_LABS_API_KEY.')
       return []
     }
+    if (res.status === 404) {
+      return []
+    }
     if (!res.ok) {
-      console.warn(`[PeopleDataLabs] API error ${res.status}`)
+      console.warn(`[PeopleDataLabs] API error ${res.status}: ${await res.text()}`)
       return []
     }
 
-    const data = await res.json() as { data?: unknown[] }
-    if (!Array.isArray(data.data)) return []
+    const data = await res.json() as Record<string, unknown>
+    if (!data.id && !data.name) return []
 
-    return data.data.map((r: Record<string, unknown>) => ({
+    return [{
       providerName: this.name,
-      providerRecordId: r.id as string | undefined,
-      displayName: (r.name as string) ?? input.companyName,
-      legalName: r.legal_name as string | undefined,
-      domain: r.website as string | undefined,
-      industry: r.industry as string | undefined,
+      providerRecordId: data.id as string | undefined,
+      displayName: (data.legal_name as string) ?? (data.name as string) ?? input.companyName,
+      legalName: data.legal_name as string | undefined,
+      domain: data.website as string | undefined,
+      industry: data.industry as string | undefined,
       employeeCount:
-        typeof r.employee_count === 'number' ? r.employee_count : undefined,
-      hqCity: (r.location as Record<string, string> | undefined)?.locality,
-      hqState: (r.location as Record<string, string> | undefined)?.region,
-      hqCountry: (r.location as Record<string, string> | undefined)?.country,
-      rawPayload: r,
-    }))
+        typeof data.employee_count === 'number' ? data.employee_count : undefined,
+      hqCity: (data.location as Record<string, string> | undefined)?.locality,
+      hqState: (data.location as Record<string, string> | undefined)?.region,
+      hqCountry: (data.location as Record<string, string> | undefined)?.country,
+      rawPayload: data,
+    }]
   }
 }

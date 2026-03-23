@@ -66,6 +66,12 @@ describe('scoreCandidate', () => {
     const breakdown = scoreCandidate(candidate, baseInput, 1.0)
     expect(breakdown.industryAlignment).toBe(0)
   })
+
+  it('normalizes country names before comparing', () => {
+    const candidate = { ...baseCandidate, hqCountry: 'United States' }
+    const breakdown = scoreCandidate(candidate, baseInput, 1.0)
+    expect(breakdown.countryMatch).toBe(5)
+  })
 })
 
 describe('toMatchTier', () => {

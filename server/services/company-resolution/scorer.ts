@@ -1,4 +1,5 @@
 import type { CandidateCompany, NormalizedInput } from '../../providers/company/types.js'
+import { normalizeCountry } from './normalizer.js'
 
 export interface ScoreBreakdown {
   domainExact: number
@@ -86,7 +87,7 @@ function scoreIndustry(candidateIndustry?: string, inputIndustry?: string): numb
 
 function scoreCountry(candidateCountry?: string, inputCountry?: string): number {
   if (!inputCountry || !candidateCountry) return 5 // default US-first assumption
-  return candidateCountry.toUpperCase() === inputCountry.toUpperCase() ? 5 : 0
+  return normalizeCountry(candidateCountry) === normalizeCountry(inputCountry) ? 5 : 0
 }
 
 export function toMatchTier(score: number): 'confident' | 'suggested' | 'not_found' {

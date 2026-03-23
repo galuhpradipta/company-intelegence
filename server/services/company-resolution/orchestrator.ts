@@ -45,8 +45,8 @@ export async function resolveCompany(
     .insert(resolutionInputs)
     .values({
       sourceType,
-      rawInput: input as Record<string, unknown>,
-      normalizedInput: normalized as Record<string, unknown>,
+      rawInput: input as unknown as Record<string, unknown>,
+      normalizedInput: normalized as unknown as Record<string, unknown>,
       status: 'processing',
     })
     .returning({ id: resolutionInputs.id })
@@ -174,7 +174,7 @@ export async function resolveCompany(
       companyId,
       rank: i + 1,
       score: breakdown.finalScore,
-      scoreBreakdown: breakdown as Record<string, unknown>,
+      scoreBreakdown: breakdown as unknown as Record<string, unknown>,
       selected: i === 0, // auto-select top match
     })
 
@@ -187,7 +187,7 @@ export async function resolveCompany(
       confidenceScore: breakdown.finalScore,
       matchTier: tier,
       sourceProviders: candidate.providerNames,
-      scoreBreakdown: breakdown as Record<string, unknown>,
+      scoreBreakdown: breakdown as unknown as Record<string, unknown>,
     })
   }
 
