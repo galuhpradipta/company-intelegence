@@ -17,7 +17,13 @@
     "start": "node dist/server/index.js",
     "test:e2e": "playwright test",
     "test:e2e:ui": "playwright test --ui",
-    "test:e2e:headed": "playwright test --headed"
+    "test:e2e:headed": "playwright test --headed",
+    "test:e2e:integration": "tsx scripts/run-e2e-integration.ts",
+    "test:e2e:integration:headed": "tsx scripts/run-e2e-integration.ts --headed",
+    "test:e2e:integration:ui": "tsx scripts/run-e2e-integration.ts --ui",
+    "test:e2e:integration:docker": "tsx scripts/run-e2e-integration.ts --docker",
+    "test:e2e:integration:docker:headed": "tsx scripts/run-e2e-integration.ts --docker --headed",
+    "test:e2e:integration:docker:ui": "tsx scripts/run-e2e-integration.ts --docker --ui"
   },
   "dependencies": {
     "@base-ui/react": "^1.3.0",

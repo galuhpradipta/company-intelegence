@@ -1,8 +1,7 @@
 import { defineConfig, devices } from "@playwright/test";
 
 export default defineConfig({
-  testDir: "./e2e/merclex",
-  testIgnore: ["**/integration/**"],
+  testDir: "./e2e/merclex/integration",
   fullyParallel: false,
   forbidOnly: !!process.env.CI,
   retries: process.env.CI ? 2 : 0,
@@ -21,7 +20,7 @@ export default defineConfig({
   webServer: {
     command: "pnpm dev:all",
     url: "http://localhost:5173",
-    reuseExistingServer: !process.env.CI,
+    reuseExistingServer: false,
     timeout: 120_000,
   },
 });

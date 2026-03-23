@@ -5,6 +5,7 @@ import { db } from '../../db/client.js'
 import { articleRelevancyScores, companyArticles, newsArticles, companies } from '../../db/schema/index.js'
 import { eq } from 'drizzle-orm'
 import { env } from '../../env.js'
+import { getMockArticleScore } from '../../testing/mock-fixtures.js'
 
 const PROMPT_VERSION = 'v1'
 const CONCURRENCY = 5
@@ -57,6 +58,16 @@ async function scoreOneArticle(
   article: { id: string; title: string; snippet?: string | null; fullText?: string | null },
   retryCount = 0
 ): Promise<ArticleScore | null> {
+  if (env.MERCLEX_MOCK_EXTERNAL_PROVIDERS) {
+    const mockScore = getMockArticleScore(article)
+    return {
+      articleId: article.id,
+      relevancyScore: mockScore.relevancyScore,
+      category: mockScore.category,
+      explanation: mockScore.explanation,
+    }
+  }
+
   const articleText = article.fullText ?? article.snippet ?? article.title
 
   const prompt = `You are a financial and business intelligence analyst. Score how relevant the following news article is to understanding the business health, creditworthiness, or operational risk of the company described below.

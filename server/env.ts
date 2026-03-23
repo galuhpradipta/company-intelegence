@@ -1,5 +1,10 @@
 import { z } from 'zod'
 
+const booleanFlag = z
+  .string()
+  .optional()
+  .transform((value) => value === '1' || value === 'true')
+
 const envSchema = z.object({
   DATABASE_URL: z.string().min(1),
   OPENAI_API_KEY: z.string().min(1),
@@ -15,6 +20,7 @@ const envSchema = z.object({
   PROVIDER_TIMEOUT_MS: z.coerce.number().default(10000),
   NEWS_LOOKBACK_DAYS: z.coerce.number().default(30),
   LOG_LEVEL: z.string().default('info'),
+  MERCLEX_MOCK_EXTERNAL_PROVIDERS: booleanFlag,
 })
 
 export const env = envSchema.parse(process.env)

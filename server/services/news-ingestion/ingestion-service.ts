@@ -1,16 +1,9 @@
 import { db } from '../../db/client.js'
 import { newsArticles, companyArticles, companies } from '../../db/schema/index.js'
 import { eq } from 'drizzle-orm'
-import type { NewsProvider } from '../../providers/news/types.js'
-import { NewsApiProvider } from '../../providers/news/newsapi.js'
-import { GNewsProvider } from '../../providers/news/gnews.js'
+import { getNewsProviders } from '../../providers/news/registry.js'
 import { deduplicateArticles, computeUrlHash, computeDedupeFingerprint } from './deduplicator.js'
 import { env } from '../../env.js'
-
-const NEWS_PROVIDERS: NewsProvider[] = [
-  new NewsApiProvider(),
-  new GNewsProvider(),
-]
 
 export async function fetchNewsForCompany(companyId: string): Promise<{ articlesIngested: number }> {
   const company = await db.query.companies.findFirst({
@@ -23,11 +16,12 @@ export async function fetchNewsForCompany(companyId: string): Promise<{ articles
   fromDate.setDate(fromDate.getDate() - env.NEWS_LOOKBACK_DAYS)
 
   const searchQuery = company.displayName
+  const newsProviders = getNewsProviders()
 
   // Collect from all available providers
   const allArticles = (
     await Promise.all(
-      NEWS_PROVIDERS.map((p) =>
+      newsProviders.map((p) =>
         p.fetchNews(searchQuery, fromDate, toDate).catch((err) => {
           console.warn(`[${p.name}] fetchNews failed:`, err)
           return []
