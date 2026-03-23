@@ -1,2 +1,10 @@
-// Schema barrel file — import and re-export all table definitions here.
-// Example: export * from './companies.js'
+export * from './resolution-inputs.js'
+export * from './batch-uploads.js'
+export * from './batch-upload-items.js'
+export * from './companies.js'
+export * from './company-identifiers.js'
+export * from './company-source-records.js'
+export * from './company-matches.js'
+export * from './news-articles.js'
+export * from './company-articles.js'
+export * from './article-relevancy-scores.js'
