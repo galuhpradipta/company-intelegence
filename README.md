@@ -2,36 +2,54 @@
 
 A micro-app that resolves company identities, fetches news, and scores article relevancy using a multi-provider pipeline with deterministic confidence scoring and LLM-powered relevancy analysis.
 
-## Current Status
+## If You're Jumping In
 
-- Verified on March 24, 2026: `pnpm build` passes.
-- Verified on March 24, 2026: `pnpm test -- --run tests/unit server/routes/relevancy.test.ts` passes with `61` tests across `12` files.
-- Verified on March 24, 2026: `pnpm test:e2e` passes with `3` Company Intelligence browser tests.
-- Active browser-test coverage under `e2e/company-intelligence/` now covers the input smoke path, single-company resolve -> detail -> news, and CSV upload -> progress -> result actions.
-- A full integration Playwright path is available via `pnpm test:e2e:integration` and `pnpm test:e2e:integration:docker`; both use the real frontend/backend plus a real isolated PostgreSQL database, while mocking third-party providers inside the server.
-- Archived auth/notes template Playwright files live under `legacy/playwright-template/` and are not part of the trial submission.
+- Want to run the app locally: start with [Quick Start](#quick-start)
+- Want sample data for the CSV flow: use [Sample Data](#sample-data)
+- Want to understand the request pipeline: read [End-to-End Flow](#end-to-end-flow)
+- Want the best entry points into the code: jump to [Where to Start in Code](#where-to-start-in-code)
+- Want provider quotas and free-tier constraints: see [Provider Access Notes](#provider-access-notes)
+
+## What This App Does
+
+- Resolves a single company input or a CSV batch against multiple company-data providers
+- Clusters overlapping candidates into one canonical company record with a deterministic confidence score
+- Fetches recent news for confident matches
+- Scores each article for business relevance using structured LLM output
+- Surfaces results in a lightweight UI with match tiers, candidate confirmation, and ranked news
 
 ## Quick Start
 
+### Prerequisites
+
+| Requirement | Notes |
+|---|---|
+| Node.js | `>=22` |
+| pnpm | repo uses `pnpm@10.32.1` |
+| PostgreSQL | required for app and integration flows |
+| OpenAI API key | required for relevancy scoring and AI fallback |
+
+### Fastest local boot
+
 ```bash
-# 1. Copy and fill in env vars
 cp .env.example .env
-
-# 2. Install dependencies
 pnpm install
-
-# 3. Run database migrations (requires DATABASE_URL)
 pnpm db:migrate
-
-# 4. Start both frontend + backend
 pnpm dev:all
 ```
 
-If you want to run them separately:
+Then open:
+
+- Frontend: `http://localhost:5173`
+- Backend: `http://localhost:3000`
+
+In development, Vite proxies `/api` and `/trpc` requests to the Hono server on port `3000`.
+
+If you want to run the servers separately:
 
 ```bash
-pnpm dev          # frontend (Vite, port 5173)
-pnpm server:dev   # backend (Hono, port 3000)
+pnpm dev          # frontend
+pnpm server:dev   # backend
 ```
 
 For a production-style local run:
@@ -41,22 +59,126 @@ pnpm build
 pnpm start
 ```
 
-In development, Vite proxies `/api` and `/trpc` requests to the Hono server on port `3000`.
+### Two-minute demo path
 
-## Manual CSV Fixtures
+1. Start the app with `pnpm dev:all`.
+2. Open `http://localhost:5173`.
+3. Go to `CSV Upload`.
+4. Upload `manual-test-data/companies.csv`.
+5. Open one confident result to inspect the company profile and ranked news.
 
-For quick manual CSV upload testing, use the sample files under `manual-test-data/`:
+## Common Commands
 
-- `manual-test-data/companies.csv` — valid rows using real company names and official domains (`Stripe`, `Shopify`, `Figma`, `Slack`, `HubSpot`, `Atlassian`).
-- `manual-test-data/companies-invalid.csv` — same shape, but with one row missing `company_name` to exercise CSV validation errors.
+| Command | Purpose |
+|---|---|
+| `pnpm dev:all` | Start frontend and backend together |
+| `pnpm dev` | Start frontend only |
+| `pnpm server:dev` | Start backend only |
+| `pnpm db:migrate` | Apply Drizzle migrations |
+| `pnpm build` | Build frontend and backend |
+| `pnpm start` | Run the production build locally |
+| `pnpm test -- --run tests/unit` | Run core unit tests |
+| `pnpm test:e2e` | Run browser-mocked Playwright tests |
+| `pnpm test:e2e:integration` | Run full integration E2E with a real database |
+| `pnpm test:e2e:integration:docker` | Run full integration E2E with Docker-managed Postgres |
 
-The supported CSV columns are `company_name,domain,address,city,state,country,industry`, and only `company_name` is required.
+## Environment Setup
 
-## E2E Test Modes
+### Minimum env to boot the app
+
+| Variable | Required | Why |
+|---|---|---|
+| `DATABASE_URL` | Yes | PostgreSQL connection string |
+| `OPENAI_API_KEY` | Yes | Relevancy scoring and AI fallback |
+
+### Recommended provider keys
+
+| Provider | Required | Env var | Why you would add it |
+|---|---|---|---|
+| OpenAI | Yes | `OPENAI_API_KEY` | Required for article relevancy scoring and fallback resolution |
+| GNews | Recommended | `GNEWS_API_KEY` | Best default news provider for local/manual testing |
+| People Data Labs | Recommended | `PEOPLE_DATA_LABS_API_KEY` | Stronger firmographic enrichment and domain-based matching |
+| NewsAPI | Optional | `NEWS_API_KEY` | Secondary news provider fallback |
+| OpenCorporates | Optional | `OPENCORPORATES_API_KEY` | Better legal-entity and registry coverage |
+| SEC EDGAR | No key | none | Public registry source used automatically |
+
+### Example `.env`
+
+```env
+DATABASE_URL=postgresql://postgres:password@localhost:5432/company_intelligence
+E2E_DATABASE_URL=postgresql://postgres:password@localhost:5432/company_intelligence_e2e
+E2E_USE_DOCKER=0
+
+OPENAI_API_KEY=sk-...
+OPENAI_MODEL=gpt-5.4-mini
+OPENAI_FALLBACK_MODEL=gpt-5.4
+
+GNEWS_API_KEY=your_gnews_key
+NEWS_API_KEY=your_newsapi_key
+
+PEOPLE_DATA_LABS_API_KEY=your_pdl_key
+OPENCORPORATES_API_KEY=your_opencorporates_key
+
+NODE_ENV=development
+PORT=3000
+BATCH_CONCURRENCY=5
+PROVIDER_TIMEOUT_MS=10000
+NEWS_LOOKBACK_DAYS=30
+LOG_LEVEL=info
+COMPANY_INTELLIGENCE_MOCK_EXTERNAL_PROVIDERS=0
+```
+
+### Full env reference
+
+| Variable | Required | Description |
+|---|---|---|
+| `DATABASE_URL` | Yes | PostgreSQL connection string |
+| `E2E_DATABASE_URL` | Optional | Separate database used by `pnpm test:e2e:integration` when you want a fixed isolated integration DB |
+| `E2E_DATABASE_ADMIN_URL` | Optional | Admin connection used to create/drop E2E databases when `DATABASE_URL` lacks the needed privilege |
+| `E2E_USE_DOCKER` | Optional | Default `false` — when set, `pnpm test:e2e:integration` uses a temporary Docker Postgres container |
+| `E2E_DOCKER_IMAGE` | Optional | Default `postgres:16-alpine` |
+| `E2E_DOCKER_DB_NAME` | Optional | Default `company_intelligence_e2e` |
+| `E2E_DOCKER_USER` | Optional | Default `postgres` |
+| `E2E_DOCKER_PASSWORD` | Optional | Default `postgres` |
+| `OPENAI_API_KEY` | Yes | OpenAI API key for relevancy scoring and AI fallback |
+| `OPENAI_MODEL` | No | Default `gpt-5.4-mini` |
+| `OPENAI_FALLBACK_MODEL` | No | Default `gpt-5.4`, used for hard resolution cases |
+| `GNEWS_API_KEY` | Recommended | GNews key; the current best default for dev/manual fetches |
+| `NEWS_API_KEY` | Optional | NewsAPI key; useful as a secondary provider if your plan supports the query shape |
+| `PEOPLE_DATA_LABS_API_KEY` | Recommended | PDL firmographic enrichment |
+| `OPENCORPORATES_API_KEY` | Optional | OpenCorporates registry supplement |
+| `PORT` | No | Default `3000` |
+| `BATCH_CONCURRENCY` | No | Default `5` — parallel rows in CSV batch |
+| `PROVIDER_TIMEOUT_MS` | No | Default `10000` — per-provider request timeout |
+| `NEWS_LOOKBACK_DAYS` | No | Default `30` — news lookback window |
+| `COMPANY_INTELLIGENCE_MOCK_EXTERNAL_PROVIDERS` | No | Default `false` — enables the server-side fixture providers used by the integration E2E runner |
+
+## Sample Data
+
+Use the fixtures under `manual-test-data/` for manual CSV upload testing:
+
+- `manual-test-data/companies.csv` — valid rows using real company names and official domains
+- `manual-test-data/companies-invalid.csv` — same shape, but with one row missing `company_name`
+
+Supported CSV columns:
+
+```text
+company_name,domain,address,city,state,country,industry
+```
+
+Only `company_name` is required.
+
+## Testing and Test Modes
+
+### Unit tests
+
+```bash
+pnpm test -- --run tests/unit
+```
 
 ### Fast browser-mocked UI tests
 
-These run the real frontend but mock API responses at the browser layer:
+These run the real frontend but mock API responses at the browser layer.
 
 ```bash
 pnpm test:e2e
@@ -90,145 +212,85 @@ pnpm test:e2e:integration:docker:headed
 pnpm test:e2e:integration:docker:ui
 ```
 
-The Docker mode uses:
+Docker mode uses:
 
 - `E2E_DOCKER_IMAGE` default `postgres:16-alpine`
 - `E2E_DOCKER_DB_NAME` default `company_intelligence_e2e`
 - `E2E_DOCKER_USER` default `postgres`
 - `E2E_DOCKER_PASSWORD` default `postgres`
-- a running local Docker daemon (Docker Desktop, OrbStack, Colima, etc.)
+- a running local Docker daemon
 - dedicated test ports: frontend `4173`, backend `3300`
 
-If you want Docker to be the default integration mode, set:
+If you want Docker to be the default integration mode:
 
 ```env
 E2E_USE_DOCKER=1
 ```
 
-Recommended local setup:
+## Verification Snapshot
 
-```env
-DATABASE_URL=postgresql://postgres:password@localhost:5432/company_intelligence
-E2E_DATABASE_URL=postgresql://postgres:password@localhost:5432/company_intelligence_e2e
-```
-
-## API Keys Setup
-
-OpenAI is required. For company/news coverage, the app works best when you also provide at least one company data key and one news provider key.
-
-### 1. OpenAI (required — relevancy scoring + AI fallback)
-
-Sign up at https://platform.openai.com/signup
-
-1. Go to **API Keys** → **Create new secret key**
-2. Add billing at **Settings → Billing** (pay-as-you-go, no subscription needed)
-3. Cost: `gpt-5.4-mini` is ~$0.15/1M input tokens — scoring 30 articles per company costs roughly $0.002
-
-```env
-OPENAI_API_KEY=sk-...
-```
-
-### 2. GNews (recommended news ingestion provider for the trial)
-
-Sign up at https://gnews.io/
-
-1. Generate an API key from the dashboard
-2. Free tier is limited but works with the current request shape in this repo
-
-```env
-GNEWS_API_KEY=your_key_here
-```
-
-### 3. NewsAPI (optional secondary news provider)
-
-Sign up at https://newsapi.org/register
-
-1. Register for a free account — your key is shown immediately on the dashboard
-2. The free tier can return `426 Upgrade required` for some query shapes, so treat it as optional fallback unless you have a paid plan
-
-```env
-NEWS_API_KEY=your_key_here
-```
-
-### 4. PeopleDataLabs (recommended company firmographic data)
-
-Sign up at https://www.peopledatalabs.com/signup
-
-1. Create an account and go to **API Keys** in the dashboard
-2. Free tier: 1,000 credits/month (~1,000 company lookups). Paid: ~$0.04–$0.10/record after that
-
-```env
-PEOPLE_DATA_LABS_API_KEY=your_key_here
-```
-
-### 5. SEC EDGAR (corporate registry data)
-
-No signup or API key required. SEC EDGAR is a US government public database — completely free with no rate limit concerns for reasonable usage. The app queries it automatically.
-
-No `.env` entry needed.
-
-### 6. OpenCorporates (optional registry supplement)
-
-Sign up at https://opencorporates.com/
-
-The current repo includes an adapter and provider registry entry for OpenCorporates. If you have a key, you can add it to improve registry coverage.
-
-```env
-OPENCORPORATES_API_KEY=your_key_here
-```
-
-### Final `.env`
-
-```env
-DATABASE_URL=postgresql://postgres:password@localhost:5432/company_intelligence
-E2E_DATABASE_URL=postgresql://postgres:password@localhost:5432/company_intelligence_e2e
-E2E_USE_DOCKER=0
-
-OPENAI_API_KEY=sk-...
-OPENAI_MODEL=gpt-5.4-mini
-OPENAI_FALLBACK_MODEL=gpt-5.4
-
-GNEWS_API_KEY=your_gnews_key
-NEWS_API_KEY=your_newsapi_key
-
-PEOPLE_DATA_LABS_API_KEY=your_pdl_key
-OPENCORPORATES_API_KEY=your_opencorporates_key
-
-NODE_ENV=development
-PORT=3000
-BATCH_CONCURRENCY=5
-PROVIDER_TIMEOUT_MS=10000
-NEWS_LOOKBACK_DAYS=30
-LOG_LEVEL=info
-COMPANY_INTELLIGENCE_MOCK_EXTERNAL_PROVIDERS=0
-```
-
-## Environment Variables
-
-| Variable | Required | Description |
-|---|---|---|
-| `DATABASE_URL` | Yes | PostgreSQL connection string |
-| `E2E_DATABASE_URL` | Optional | Separate database used by `pnpm test:e2e:integration` when you want a fixed isolated integration DB |
-| `E2E_DATABASE_ADMIN_URL` | Optional | Admin connection used to create/drop E2E databases when `DATABASE_URL` lacks the needed privilege |
-| `E2E_USE_DOCKER` | Optional | Default `false` — when set, `pnpm test:e2e:integration` uses a temporary Docker Postgres container |
-| `E2E_DOCKER_IMAGE` | Optional | Default `postgres:16-alpine` |
-| `E2E_DOCKER_DB_NAME` | Optional | Default `company_intelligence_e2e` |
-| `E2E_DOCKER_USER` | Optional | Default `postgres` |
-| `E2E_DOCKER_PASSWORD` | Optional | Default `postgres` |
-| `OPENAI_API_KEY` | Yes | OpenAI API key for relevancy scoring and AI fallback |
-| `OPENAI_MODEL` | No | Default `gpt-5.4-mini` |
-| `OPENAI_FALLBACK_MODEL` | No | Default `gpt-5.4`, used for hard resolution cases |
-| `GNEWS_API_KEY` | Recommended | GNews key; the current best default for dev/manual fetches |
-| `NEWS_API_KEY` | Optional | NewsAPI key; useful as a secondary provider if your plan supports the query shape |
-| `PEOPLE_DATA_LABS_API_KEY` | Recommended | PDL firmographic enrichment |
-| `OPENCORPORATES_API_KEY` | Optional | OpenCorporates registry supplement |
-| `PORT` | No | Default `3000` |
-| `BATCH_CONCURRENCY` | No | Default `5` — parallel rows in CSV batch |
-| `PROVIDER_TIMEOUT_MS` | No | Default `10000` — per-provider request timeout |
-| `NEWS_LOOKBACK_DAYS` | No | Default `30` — news lookback window |
-| `COMPANY_INTELLIGENCE_MOCK_EXTERNAL_PROVIDERS` | No | Default `false` — enables the server-side fixture providers used by the integration E2E runner |
+- Verified on March 24, 2026: `pnpm build` passes.
+- Verified on March 24, 2026: `pnpm test -- --run tests/unit server/routes/relevancy.test.ts` passes with `61` tests across `12` files.
+- Verified on March 24, 2026: `pnpm test:e2e` passes with `3` Company Intelligence browser tests.
+- Active browser-test coverage under `e2e/company-intelligence/` covers the input smoke path, single-company resolve -> detail -> news, and CSV upload -> progress -> result actions.
+- A full integration Playwright path is available via `pnpm test:e2e:integration` and `pnpm test:e2e:integration:docker`.
+- Archived auth/notes template Playwright files live under `legacy/playwright-template/` and are not part of the trial submission.
 
 ## Architecture
+
+This section is the brief architecture note requested by the original paid-trial PRD in `tmp/Merclex-Paid-Trial-PRD.docx.md`. It covers the schema choice, provider abstraction, conflict handling, relevancy prompt structure, and the main v1 trade-offs.
+
+### PRD Coverage
+
+| PRD area | Current implementation in this repo | Status |
+|---|---|---|
+| Company input interface | Single-company form, CSV upload, downloadable template, preview of first 5 rows, required `company_name` validation, and batch progress polling | Implemented |
+| Company identity engine | Provider abstraction, multi-source candidate fan-out, deterministic scoring, canonical record persistence, source-record tracking, and `confident` / `suggested` / `not_found` tiers | Implemented |
+| News ingestion | Recent-news fetch for confident matches, deduplication by URL and event fingerprint, persisted article store, and company-article linking | Implemented |
+| Relevancy scoring | OpenAI structured output, category + explanation, batch scoring, retries, and default filtering of low-score articles | Implemented |
+| GUI requirements | Input tabs, summary bar, candidate confirmation flow, company detail card, ranked news list, and low-relevance toggle | Implemented |
+| Scale and operations | Works for demo and local evaluation flows, but queue durability and large-batch operability are still v1-level | Partial |
+
+### End-to-End Flow
+
+```mermaid
+flowchart TD
+    U["User"] --> UI["React UI<br/>Input, Results, Detail pages"]
+    UI --> API["Hono REST + tRPC API"]
+    API --> NORM["Validate and normalize input"]
+
+    NORM --> DET["Deterministic company providers<br/>People Data Labs<br/>SEC EDGAR<br/>OpenCorporates"]
+    NORM -.-> AIF["AI fallback provider<br/>used only when deterministic providers return no candidates<br/>OpenAI Responses API<br/>model: gpt-5.4"]
+
+    DET --> MERGE["Cluster and merge overlapping candidates"]
+    AIF --> MERGE
+    MERGE --> SCORE["Deterministic confidence scoring<br/>local scoring logic<br/>no LLM involved"]
+    SCORE --> TIER{"Match tier"}
+
+    TIER -->|"Confident / Suggested / Not Found"| DB["PostgreSQL<br/>companies, matches, source records,<br/>identifiers, batch state"]
+    DB --> RESULTS["Results dashboard<br/>summary counts, candidates,<br/>confirm actions, batch polling"]
+
+    TIER -->|"Confident only"| NEWS["News providers<br/>GNews / NewsAPI"]
+    NEWS --> DEDUPE["Deduplicate by URL and event fingerprint"]
+    DEDUPE --> REL["Relevancy scoring<br/>OpenAI Responses API<br/>model: gpt-5.4-mini"]
+    REL --> DB
+    DB --> DETAIL["Company detail view<br/>profile, ranked news,<br/>low-relevance toggle"]
+```
+
+### API Surface
+
+| Endpoint | Purpose |
+|---|---|
+| `POST /api/company/resolve` | Resolve a single company input into ranked candidate matches |
+| `POST /api/company/preview-batch` | Parse and validate an uploaded CSV before processing |
+| `POST /api/company/resolve-batch` | Create and start a CSV batch resolution job |
+| `POST /api/company/confirm` | Confirm a suggested candidate as the selected company |
+| `GET /api/company/:id` | Return the persisted canonical company profile plus source records and identifiers |
+| `GET /api/batch/:id` | Return batch progress, counts, and row-level statuses |
+| `POST /api/news/fetch/:companyId` | Fetch recent news for a resolved company |
+| `GET /api/news/:companyId` | Return stored company news, optionally including low-relevance items |
+| `POST /api/relevancy/score` | Score one article against one company context |
+| `POST /api/relevancy/batch` | Score a batch of articles against one company context |
 
 ### Stack
 
@@ -252,6 +314,20 @@ server/
 ├── trpc/routers/        # company, news, relevancy, batch tRPC procedures
 └── routes/              # Hono REST handlers (thin wrappers over services)
 ```
+
+### Where to Start in Code
+
+If you need to trace the app quickly, start here:
+
+- App shell and route wiring: `src/routes/InputPage.tsx`, `src/routes/ResultsPage.tsx`, `src/routes/CompanyDetailPage.tsx`
+- Frontend API calls: `src/lib/api.ts` and `src/lib/trpc.ts`
+- HTTP entry point: `server/app.ts`
+- Single-company resolution flow: `server/services/company-resolution/orchestrator.ts`
+- CSV parsing and batch execution: `server/services/batch/csv-parser.ts` and `server/services/batch/batch-processor.ts`
+- News ingestion: `server/services/news-ingestion/`
+- Relevancy scoring: `server/services/relevancy/`
+- Database schema: `server/db/schema/`
+- Provider registration: `server/providers/company/registry.ts` and `server/providers/news/`
 
 ### Schema Design
 
@@ -288,6 +364,8 @@ To add a new provider: create one file in `server/providers/company/`, implement
 ### Confidence Scoring
 
 Scoring is fully deterministic before any AI involvement:
+
+This step runs in local application code and does not call OpenAI. In this repo, OpenAI is used for AI fallback resolution and article relevancy scoring, not for the base confidence calculation.
 
 | Signal | Points |
 |---|---|
@@ -330,29 +408,24 @@ Output schema (strict Structured Output):
 
 Articles below 30 are stored but hidden in the default view. Scoring runs with concurrency 5 and retries transient failures up to 2 times with exponential backoff.
 
-## Trade-offs and What I'd Do Differently
+## Current Limitations and Improvement Path
 
-### v1 Trade-offs Made
+These are the main places where the current v1 implementation is intentionally lighter than the idealized production system described in the PRD.
 
-- **In-process batch queue**: v1 runs CSV work in-process using `p-limit` with DB polling state. This is simple and sufficient for a demo but would not survive a server restart mid-batch in production. v2 would add a dedicated worker service and a durable queue (BullMQ or similar).
+| Current limitation | Why it matters | How to improve it |
+|---|---|---|
+| In-process batch queue | CSV jobs run inside the web process, so a deploy or crash can interrupt a batch and make 50+ row reliability dependent on one server instance | Move batch resolution, news fetch, and relevancy scoring into a durable worker queue with retries, dead-letter handling, and SSE or WebSocket progress updates |
+| Provider-specific rate limiting is basic | Different providers have very different quotas, and SEC EDGAR in particular has a hard fair-access threshold that should not be crossed during bursts | Add per-provider token buckets, adaptive backoff, quota-aware scheduling, and caching so free-tier and public-data adapters are protected independently |
+| No cross-request canonical deduplication | The same company can be persisted multiple times across separate resolutions, which fragments source records, news history, and manual confirmations | Add unique constraints and merge keys on stable identifiers such as domain, CIK, OpenCorporates company number, and PDL IDs, then route writes through an upsert-and-merge service |
+| Static provider weighting | Provider reliability is currently a fixed multiplier, which is good for v1 but does not fully capture field freshness, source authority, or stale data drift | Add freshness decay, source-specific authority rules by field, and a visible audit trail showing why one source won over another |
+| News and scoring workflows are loosely tracked | News fetch and article scoring happen in the background, but there is no first-class job model for resume, retry, or operator visibility | Introduce job tables for enrichment stages, structured failure reasons, resumable workflows, and an admin/debug view for stuck jobs |
+| Browser and load coverage are still narrow | Core flows are covered, but there is limited confidence around large CSV runs, provider outage matrices, and regression-heavy UI states | Add load tests for 50+ row batches, provider contract tests, and deeper Playwright coverage for confirm/retry/error/detail flows |
+| International resolution is still US-first | Address parsing, registry coverage, and legal suffix handling are better for US companies than for broader international entities | Add country-aware normalizers, expand registry adapters beyond SEC/OpenCorporates, and broaden legal-entity normalization rules |
 
-- **No domain-level company deduplication across requests**: Two resolution inputs for the same domain may produce two company rows. v2 should add a unique constraint on `domain` in `companies` and handle upserts in the orchestrator.
-
-- **News provider fallback is sequential**: If NewsAPI fails, the system tries GNews. v2 could run both in parallel and merge results before deduplication.
-
-- **Relevancy scores are one-shot per company/article pair**: If the prompt or model changes, old scores are not re-evaluated. v2 should add a `prompt_version` invalidation sweep.
-
-### International Support (v2 changes)
-
-- Address normalization needs country-specific parsing (postcode formats, regional divisions)
-- SEC EDGAR jurisdiction filtering should be extended to support international registries in v2
-- Legal suffix stripping needs an international list (GmbH, AG, S.A., B.V., etc.) — already partially implemented but not exhaustive
-- PeopleDataLabs supports international company data out of the box, but country filtering and scoring weights assume US-first signals
-
-## Testing
+## Coverage Notes
 
 ```bash
-pnpm test -- --run tests/unit   # 56 unit tests
+pnpm test -- --run tests/unit   # unit tests for core pipeline components
 pnpm test:e2e                   # Company Intelligence smoke test
 ```
 
@@ -370,14 +443,26 @@ Browser coverage is intentionally narrow right now: the active Playwright suite 
 
 | Provider | Access | Notes |
 |---|---|---|
-| SEC EDGAR | Free, no key needed | US government public database; no rate limit concerns for reasonable usage |
+| SEC EDGAR | Free, no key needed | US government public database with fair-access throttling; see rate-limit notes below |
 | PeopleDataLabs | Paid; free trial available | Set `PEOPLE_DATA_LABS_API_KEY`; provider skips gracefully if unset |
 | OpenCorporates | Optional | `OPENCORPORATES_API_KEY` improves registry coverage; adapter skips gracefully if unset or rate limited |
-| GNews | Free tier (limited) | `GNEWS_API_KEY` is the recommended news key for this repo’s current request shape |
-| NewsAPI | Optional secondary provider | Free-tier plans can hit `426 Upgrade required`; the provider fails gracefully |
+| GNews | Free tier (limited) | `GNEWS_API_KEY` is the recommended news key for this repo’s current request shape; see daily limits below |
+| NewsAPI | Optional secondary provider | Free-tier plans can hit quota and plan constraints; the provider fails gracefully |
 | OpenAI | Paid | `OPENAI_API_KEY` required for relevancy scoring and AI fallback |
 
 If any provider is unavailable, the pipeline continues with remaining providers. A warning is logged with the specific reason (missing key, auth failure, rate limit). The orchestrator falls back to AI-assisted resolution only when all deterministic providers return no results.
+
+### Rate Limit Notes
+
+Checked against provider docs on March 24, 2026:
+
+| Provider | Current documented limit / free-plan constraint | What it means for this app |
+|---|---|---|
+| SEC EDGAR | Fair-access guidance is `10 requests/second` maximum. The SEC also expects a descriptive `User-Agent`, and can temporarily limit IPs that exceed the threshold. | This is the most important hard throttle in the current stack. Any production version should enforce a provider-specific EDGAR rate limiter instead of relying only on coarse app-level concurrency. |
+| GNews | Free plan: `100 requests/day`, `1 request/second`, up to `10` articles per request, `12-hour` delay, and `30 days` of history. After the daily cap, GNews returns `403`; burst overruns return `429`. | Fine for local demos and light manual testing, but easy to exhaust during repeated batch runs or broad regression testing. |
+| NewsAPI | Developer plan: `100 requests/day`, `24-hour` article delay, and search limited to roughly the last month. Quota/rate overruns return `429`, and exhausted daily quota can surface as `apiKeyExhausted`. | Good fallback coverage for dev, but not dependable enough for high-volume enrichment without an upgraded plan. |
+| OpenCorporates | Official API docs say default usage is `50 requests/day` and `200 requests/month`, though limits vary by account type and plan. | Useful as a registry supplement, but the default quota is too small for heavy batch resolution unless you upgrade or cache aggressively. |
+| People Data Labs | PDL documents rate limits as per-key and per-endpoint. For free plans, the plan table currently shows `100/month` for Company Enrichment and `100/month` for Company Search, while the exact live rate window should be read from dashboard/response headers. | Capacity is credit-driven more than request-driven. The app should inspect returned rate-limit headers and back off by endpoint instead of assuming one global quota model. |
 
 ## Deployment (Railway)
 
