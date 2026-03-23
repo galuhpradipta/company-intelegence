@@ -89,7 +89,7 @@ export async function processBatch(batchId: string, rows: CsvRow[]): Promise<voi
               status: 'completed',
               resolutionInputId: result.resolutionInputId,
               resultCompanyId: topCandidate?.companyId ?? null,
-              topScore: topCandidate?.confidenceScore ?? null,
+              topScore: topCandidate?.confidenceScore ?? 0,
             })
             .where(eq(batchUploadItems.id, item.id))
         } catch (err) {

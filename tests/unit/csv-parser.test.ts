@@ -72,6 +72,14 @@ Apple,apple.com,some_value`
     expect(result.preview).toHaveLength(5)
   })
 
+  it('returns total row count including invalid rows', () => {
+    const csv = `company_name,domain\nApple,apple.com\n,missing.com\nGoogle,google.com`
+    const result = parseCsv(toBuffer(csv))
+    expect(result.totalRows).toBe(3)
+    expect(result.rows).toHaveLength(2)
+    expect(result.errors).toHaveLength(1)
+  })
+
   it('handles case-insensitive column names', () => {
     const csv = `Company_Name,Domain\nApple,apple.com`
     const result = parseCsv(toBuffer(csv))

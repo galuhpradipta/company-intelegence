@@ -1,10 +1,10 @@
 import { Hono } from 'hono'
 import { zValidator } from '@hono/zod-validator'
 import { z } from 'zod'
-import { resolveCompany } from '../services/company-resolution/index.js'
+import { confirmMatchSelection, resolveCompany } from '../services/company-resolution/index.js'
 import { db } from '../db/client.js'
-import { companies, companySourceRecords, companyIdentifiers, companyMatches } from '../db/schema/index.js'
-import { and, eq } from 'drizzle-orm'
+import { companies, companySourceRecords, companyIdentifiers } from '../db/schema/index.js'
+import { eq } from 'drizzle-orm'
 
 export const companyRoute = new Hono()
 
@@ -33,26 +33,7 @@ companyRoute.post(
     companyId: z.string().uuid(),
   })),
   async (c) => {
-    const { resolutionInputId, companyId } = c.req.valid('json')
-
-    await db
-      .update(companyMatches)
-      .set({ selected: false })
-      .where(eq(companyMatches.resolutionInputId, resolutionInputId))
-
-    await db
-      .update(companyMatches)
-      .set({ selected: true })
-      .where(and(
-        eq(companyMatches.resolutionInputId, resolutionInputId),
-        eq(companyMatches.companyId, companyId)
-      ))
-
-    const company = await db.query.companies.findFirst({
-      where: eq(companies.id, companyId),
-    })
-
-    return c.json({ ok: true, companyId, matchTier: company?.matchTier ?? 'suggested' })
+    return c.json(await confirmMatchSelection(c.req.valid('json')))
   }
 )
 

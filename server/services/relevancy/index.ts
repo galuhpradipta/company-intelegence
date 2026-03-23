@@ -1,1 +1,5 @@
-export { scoreArticlesForCompany } from './scoring-service.js'
+export {
+  scoreArticleBatchForProfile,
+  scoreArticleForProfile,
+  scoreArticlesForCompany,
+} from './scoring-service.js'

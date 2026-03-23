@@ -1,9 +1,9 @@
 import { z } from 'zod'
 import { router, publicProcedure } from '../trpc.js'
-import { resolveCompany } from '../../services/company-resolution/index.js'
+import { confirmMatchSelection, resolveCompany } from '../../services/company-resolution/index.js'
 import { db } from '../../db/client.js'
-import { companies, companySourceRecords, companyMatches, companyIdentifiers } from '../../db/schema/index.js'
-import { and, eq } from 'drizzle-orm'
+import { companies, companySourceRecords, companyIdentifiers } from '../../db/schema/index.js'
+import { eq } from 'drizzle-orm'
 
 const companyInputSchema = z.object({
   companyName: z.string().min(1),
@@ -28,29 +28,7 @@ export const companyRouter = router({
       companyId: z.string().uuid(),
     }))
     .mutation(async ({ input }) => {
-      // Mark all matches for this input as not selected, then select the confirmed one
-      await db
-        .update(companyMatches)
-        .set({ selected: false })
-        .where(eq(companyMatches.resolutionInputId, input.resolutionInputId))
-
-      await db
-        .update(companyMatches)
-        .set({ selected: true })
-        .where(and(
-          eq(companyMatches.resolutionInputId, input.resolutionInputId),
-          eq(companyMatches.companyId, input.companyId)
-        ))
-
-      const company = await db.query.companies.findFirst({
-        where: eq(companies.id, input.companyId),
-      })
-
-      return {
-        ok: true,
-        companyId: input.companyId,
-        matchTier: company?.matchTier ?? 'suggested',
-      }
+      return confirmMatchSelection(input)
     }),
 
   getById: publicProcedure

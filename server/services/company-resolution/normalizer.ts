@@ -13,6 +13,7 @@ export function normalizeInput(input: CompanyInput): NormalizedInput {
     ? normalizeDomain(input.domain)
     : undefined
 
+  const address = input.address?.toLowerCase().trim()
   const country = input.country
     ? normalizeCountry(input.country)
     : 'US'
@@ -25,7 +26,9 @@ export function normalizeInput(input: CompanyInput): NormalizedInput {
     .split(/[\s,&+]+/)
     .filter((p) => p.length > 1)
 
-  return { companyName, domain, city, state, country, industry, nameParts }
+  const addressParts = tokenizeAddress(address)
+
+  return { companyName, domain, address, city, state, country, industry, nameParts, addressParts }
 }
 
 export function normalizeDomain(domain: string): string {
@@ -50,4 +53,13 @@ export function normalizeCountry(country: string): string {
     au: 'AU',
   }
   return map[country.toLowerCase().trim()] ?? country.toUpperCase().slice(0, 2)
+}
+
+function tokenizeAddress(address?: string): string[] {
+  if (!address) return []
+
+  return address
+    .toLowerCase()
+    .split(/[^a-z0-9]+/)
+    .filter((part) => part.length > 1 && Number.isNaN(Number(part)))
 }

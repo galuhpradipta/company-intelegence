@@ -11,11 +11,13 @@ export interface CompanyInput {
 export interface NormalizedInput {
   companyName: string
   domain?: string
+  address?: string
   city?: string
   state?: string
   country?: string
   industry?: string
   nameParts: string[]
+  addressParts?: string[]
 }
 
 export interface CandidateCompany {

@@ -14,6 +14,7 @@ export interface ParseResult {
   rows: CsvRow[]
   errors: Array<{ row: number; message: string }>
   preview: CsvRow[]
+  totalRows: number
 }
 
 export function parseCsv(csvBuffer: Buffer): ParseResult {
@@ -63,5 +64,6 @@ export function parseCsv(csvBuffer: Buffer): ParseResult {
     rows,
     errors,
     preview: rows.slice(0, 5),
+    totalRows: records.length,
   }
 }

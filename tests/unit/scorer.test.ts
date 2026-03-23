@@ -5,11 +5,13 @@ import type { CandidateCompany, NormalizedInput } from '../../server/providers/c
 const baseInput: NormalizedInput = {
   companyName: 'apple',
   domain: 'apple.com',
+  address: '1 apple park way cupertino ca',
   city: 'cupertino',
   state: 'ca',
   country: 'US',
   industry: 'technology',
   nameParts: ['apple'],
+  addressParts: ['apple', 'park', 'way', 'cupertino', 'ca'],
 }
 
 const baseCandidate: CandidateCompany = {
@@ -71,6 +73,18 @@ describe('scoreCandidate', () => {
     const candidate = { ...baseCandidate, hqCountry: 'United States' }
     const breakdown = scoreCandidate(candidate, baseInput, 1.0)
     expect(breakdown.countryMatch).toBe(5)
+  })
+
+  it('uses address token overlap when city and state are absent', () => {
+    const input = {
+      ...baseInput,
+      city: undefined,
+      state: undefined,
+      address: '1 infinite loop cupertino ca',
+      addressParts: ['infinite', 'loop', 'cupertino', 'ca'],
+    }
+    const breakdown = scoreCandidate(baseCandidate, input, 1.0)
+    expect(breakdown.addressAlignment).toBeGreaterThan(0)
   })
 })
 

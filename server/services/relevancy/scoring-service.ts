@@ -29,6 +29,22 @@ const relevancyOutputSchema = z.object({
 
 const client = new OpenAI({ apiKey: env.OPENAI_API_KEY })
 
+export interface CompanyProfileSummary {
+  displayName: string
+  legalName?: string | null
+  industry?: string | null
+  employeeCount?: number | null
+  hqCity?: string | null
+  hqCountry?: string | null
+}
+
+export interface RelevancyArticleInput {
+  articleId?: string
+  title: string
+  snippet?: string | null
+  fullText?: string | null
+}
+
 export interface ArticleScore {
   articleId: string
   relevancyScore: number
@@ -37,14 +53,7 @@ export interface ArticleScore {
 }
 
 async function scoreOneArticle(
-  companyContext: {
-    displayName: string
-    legalName?: string | null
-    industry?: string | null
-    employeeCount?: number | null
-    hqCity?: string | null
-    hqCountry?: string | null
-  },
+  companyContext: CompanyProfileSummary,
   article: { id: string; title: string; snippet?: string | null; fullText?: string | null },
   retryCount = 0
 ): Promise<ArticleScore | null> {
@@ -111,6 +120,31 @@ Return a JSON object with: relevancyScore (0-100 integer), category (one of: fin
     console.warn(`[Relevancy] Failed to score article ${article.id}:`, err)
     return null
   }
+}
+
+export async function scoreArticleForProfile(
+  companyContext: CompanyProfileSummary,
+  article: RelevancyArticleInput,
+): Promise<ArticleScore | null> {
+  return scoreOneArticle(companyContext, {
+    id: article.articleId ?? crypto.randomUUID(),
+    title: article.title,
+    snippet: article.snippet,
+    fullText: article.fullText,
+  })
+}
+
+export async function scoreArticleBatchForProfile(
+  companyContext: CompanyProfileSummary,
+  articles: RelevancyArticleInput[],
+): Promise<Array<ArticleScore | null>> {
+  const limit = pLimit(CONCURRENCY)
+
+  return Promise.all(
+    articles.map((article) =>
+      limit(() => scoreArticleForProfile(companyContext, article))
+    )
+  )
 }
 
 export async function scoreArticlesForCompany(companyId: string): Promise<ArticleScore[]> {

@@ -6,16 +6,22 @@ export function ResultsPage() {
   const { batchId } = useParams<{ batchId: string }>()
   const [data, setData] = useState<Awaited<ReturnType<typeof trpc.batch.getStatus.query>> | null>(null)
   const [loading, setLoading] = useState(true)
+  const [confirmingRow, setConfirmingRow] = useState<number | null>(null)
 
   useEffect(() => {
     if (!batchId) return
     let stopped = false
 
+    async function loadStatus(id: string) {
+      const result = await trpc.batch.getStatus.query(id)
+      setData(result)
+      setLoading(false)
+      return result
+    }
+
     async function poll() {
       try {
-        const result = await trpc.batch.getStatus.query(batchId!)
-        setData(result)
-        setLoading(false)
+        const result = await loadStatus(batchId!)
         if (result.status === 'completed' || result.status === 'failed') {
           stopped = true
         }
@@ -32,6 +38,19 @@ export function ResultsPage() {
     }, 2500)
     return () => clearInterval(interval)
   }, [batchId])
+
+  async function handleConfirm(resolutionInputId: string, companyId: string, rowNumber: number) {
+    setConfirmingRow(rowNumber)
+    try {
+      await trpc.company.confirmMatch.mutate({ resolutionInputId, companyId })
+      if (batchId) {
+        const result = await trpc.batch.getStatus.query(batchId)
+        setData(result)
+      }
+    } finally {
+      setConfirmingRow(null)
+    }
+  }
 
   if (loading) {
     return (
@@ -81,47 +100,114 @@ export function ResultsPage() {
         <SummaryCard label="Not Found" count={data.counts.notFound + data.counts.failed} color="red" />
       </div>
 
-      {/* Item list */}
-      <div className="bg-white rounded-xl border border-gray-200 overflow-hidden">
-        <table className="w-full text-sm">
-          <thead className="bg-gray-50 border-b border-gray-200">
-            <tr>
-              <th className="px-4 py-3 text-left text-xs font-medium text-gray-500">Row</th>
-              <th className="px-4 py-3 text-left text-xs font-medium text-gray-500">Status</th>
-              <th className="px-4 py-3 text-left text-xs font-medium text-gray-500">Tier</th>
-              <th className="px-4 py-3 text-left text-xs font-medium text-gray-500">Score</th>
-              <th className="px-4 py-3 text-left text-xs font-medium text-gray-500">Action</th>
-            </tr>
-          </thead>
-          <tbody className="divide-y divide-gray-100">
-            {data.items.map((item) => (
-              <tr key={item.rowNumber} className="hover:bg-gray-50">
-                <td className="px-4 py-3 text-gray-600">{item.rowNumber}</td>
-                <td className="px-4 py-3">
+      <div className="space-y-4">
+        {data.items.map((item) => (
+          <div key={item.rowNumber} className="bg-white rounded-xl border border-gray-200 p-5 space-y-4">
+            <div className="flex items-start justify-between gap-4">
+              <div>
+                <div className="flex items-center gap-2 mb-1">
+                  <span className="text-xs font-medium text-gray-400">ROW {item.rowNumber}</span>
                   <StatusBadge status={item.status} small />
-                </td>
-                <td className="px-4 py-3">
                   {item.matchTier && <TierBadge tier={item.matchTier} />}
-                </td>
-                <td className="px-4 py-3 text-gray-600">
+                </div>
+                <h2 className="text-lg font-semibold text-gray-900">
+                  {item.selectedCandidate?.displayName ?? item.submittedInput?.companyName ?? 'Pending row'}
+                </h2>
+                <div className="flex flex-wrap gap-2 mt-2">
+                  {item.submittedInput?.domain && <MetaPill label={item.submittedInput.domain} />}
+                  {item.submittedInput?.address && <MetaPill label={item.submittedInput.address} />}
+                  {item.submittedInput?.city && <MetaPill label={item.submittedInput.city} />}
+                  {item.submittedInput?.industry && <MetaPill label={item.submittedInput.industry} />}
+                </div>
+              </div>
+              <div className="text-right">
+                <div className="text-2xl font-bold text-gray-900">
                   {item.confidenceScore !== null ? `${Math.round(item.confidenceScore)}%` : '—'}
-                </td>
-                <td className="px-4 py-3">
-                  {item.companyId ? (
-                    <Link
-                      to={`/company/${item.companyId}`}
-                      className="text-blue-600 hover:underline text-xs font-medium"
-                    >
-                      View
-                    </Link>
-                  ) : item.errorMessage ? (
-                    <span className="text-xs text-red-500">{item.errorMessage.slice(0, 40)}</span>
-                  ) : '—'}
-                </td>
-              </tr>
-            ))}
-          </tbody>
-        </table>
+                </div>
+                <div className="text-xs text-gray-400">confidence</div>
+              </div>
+            </div>
+
+            {item.selectedCandidate && (
+              <Link
+                to={`/company/${item.selectedCandidate.companyId}`}
+                className="block rounded-xl border border-gray-200 hover:border-blue-300 p-4 transition-colors"
+              >
+                <div className="flex items-start justify-between gap-4">
+                  <div>
+                    <div className="font-medium text-gray-900">{item.selectedCandidate.displayName}</div>
+                    {item.selectedCandidate.domain && (
+                      <div className="text-sm text-gray-500 mt-1">{item.selectedCandidate.domain}</div>
+                    )}
+                    {item.selectedCandidate.sourceProviders.length > 0 && (
+                      <div className="flex flex-wrap gap-2 mt-3">
+                        {item.selectedCandidate.sourceProviders.map((provider) => (
+                          <span key={provider} className="text-xs px-2 py-0.5 rounded-full bg-gray-100 text-gray-600">
+                            {provider.replace(/_/g, ' ')}
+                          </span>
+                        ))}
+                      </div>
+                    )}
+                  </div>
+                  <span className="text-sm text-blue-600 font-medium">View company</span>
+                </div>
+              </Link>
+            )}
+
+            {item.matchTier === 'suggested' && item.suggestedCandidates.length > 0 && item.resolutionInputId && (
+              <div>
+                <p className="text-sm font-medium text-gray-700 mb-3">Top 3 candidates</p>
+                <div className="grid gap-3 md:grid-cols-3">
+                  {item.suggestedCandidates.map((candidate) => (
+                    <div key={candidate.companyId} className="rounded-xl border border-gray-200 p-4 space-y-3">
+                      <div>
+                        <div className="font-medium text-gray-900">{candidate.displayName}</div>
+                        {candidate.domain && (
+                          <div className="text-xs text-gray-500 mt-1">{candidate.domain}</div>
+                        )}
+                      </div>
+                      <div className="flex items-center gap-2 flex-wrap">
+                        <TierBadge tier={candidate.matchTier} />
+                        <span className="text-xs text-gray-400">{Math.round(candidate.confidenceScore)}%</span>
+                      </div>
+                      <div className="flex flex-wrap gap-2">
+                        {candidate.sourceProviders.map((provider) => (
+                          <span key={provider} className="text-xs px-2 py-0.5 rounded-full bg-gray-100 text-gray-600">
+                            {provider.replace(/_/g, ' ')}
+                          </span>
+                        ))}
+                      </div>
+                      <button
+                        onClick={() => handleConfirm(item.resolutionInputId!, candidate.companyId, item.rowNumber)}
+                        disabled={candidate.selected || confirmingRow === item.rowNumber}
+                        className="w-full text-sm font-medium rounded-lg border border-blue-200 px-3 py-2 text-blue-600 hover:bg-blue-50 disabled:opacity-50"
+                      >
+                        {candidate.selected ? 'Selected' : confirmingRow === item.rowNumber ? 'Confirming…' : 'Confirm'}
+                      </button>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            )}
+
+            {item.matchTier === 'not_found' && (
+              <div className="flex items-center justify-between rounded-xl border border-red-200 bg-red-50 px-4 py-3">
+                <div>
+                  <div className="text-sm font-medium text-red-700">No confident company match found.</div>
+                  <div className="text-xs text-red-500 mt-1">
+                    {item.errorMessage ?? 'Retry with different inputs or add more context.'}
+                  </div>
+                </div>
+                <Link
+                  to={toRetryHref(item.submittedInput)}
+                  className="text-sm font-medium text-red-700 hover:underline"
+                >
+                  Retry with different inputs
+                </Link>
+              </div>
+            )}
+          </div>
+        ))}
       </div>
     </div>
   )
@@ -164,4 +250,27 @@ function StatusBadge({ status, small }: { status: string; small?: boolean }) {
   }
   const cls = `${small ? 'text-xs px-2 py-0.5' : 'text-sm px-3 py-1'} rounded-full font-medium ${styles[status] ?? 'bg-gray-100 text-gray-600'}`
   return <span className={cls}>{status}</span>
+}
+
+function MetaPill({ label }: { label: string }) {
+  return (
+    <span className="text-xs px-2 py-0.5 rounded-full bg-gray-100 text-gray-600">
+      {label}
+    </span>
+  )
+}
+
+function toRetryHref(submittedInput: Awaited<ReturnType<typeof trpc.batch.getStatus.query>>['items'][number]['submittedInput']) {
+  const params = new URLSearchParams()
+  params.set('tab', 'single')
+
+  if (submittedInput?.companyName) params.set('companyName', submittedInput.companyName)
+  if (submittedInput?.domain) params.set('domain', submittedInput.domain)
+  if (submittedInput?.address) params.set('address', submittedInput.address)
+  if (submittedInput?.city) params.set('city', submittedInput.city)
+  if (submittedInput?.state) params.set('state', submittedInput.state)
+  if (submittedInput?.country) params.set('country', submittedInput.country)
+  if (submittedInput?.industry) params.set('industry', submittedInput.industry)
+
+  return `/?${params.toString()}`
 }

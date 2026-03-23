@@ -72,12 +72,30 @@ function scoreName(candidateName: string, input: NormalizedInput): number {
 }
 
 function scoreAddress(candidate: CandidateCompany, input: NormalizedInput): number {
-  if (!input.city && !input.state) return 0
+  const addressParts = input.addressParts ?? []
+  const hasStructuredLocation = Boolean(input.city || input.state)
+  const hasAddressSignal = addressParts.length > 0
+
+  if (!hasStructuredLocation && !hasAddressSignal) return 0
+
   const cityMatch =
-    input.city && candidate.hqCity?.toLowerCase().includes(input.city) ? 10 : 0
+    input.city && candidate.hqCity?.toLowerCase().includes(input.city) ? 8 : 0
   const stateMatch =
-    input.state && candidate.hqState?.toLowerCase().includes(input.state) ? 5 : 0
-  return cityMatch + stateMatch
+    input.state && candidate.hqState?.toLowerCase().includes(input.state) ? 4 : 0
+
+  const candidateLocationParts = [
+    candidate.hqCity,
+    candidate.hqState,
+    candidate.hqCountry ? normalizeCountry(candidate.hqCountry).toLowerCase() : undefined,
+  ]
+    .filter(Boolean)
+    .flatMap((value) => value!.toLowerCase().split(/[^a-z0-9]+/))
+    .filter((part) => part.length > 1)
+
+  const overlapCount = addressParts.filter((part) => candidateLocationParts.includes(part)).length
+  const addressTokenMatch = Math.min(10, overlapCount * 4)
+
+  return Math.min(15, cityMatch + stateMatch + addressTokenMatch)
 }
 
 function scoreIndustry(candidateIndustry?: string, inputIndustry?: string): number {

@@ -33,6 +33,14 @@ describe('normalizeInput', () => {
     const result = normalizeInput({ companyName: 'Acme', domain: 'https://www.acme.com/path' })
     expect(result.domain).toBe('acme.com')
   })
+
+  it('tokenizes address fragments for matching', () => {
+    const result = normalizeInput({ companyName: 'Acme', address: '1 Apple Park Way, Cupertino, CA' })
+    expect(result.address).toBe('1 apple park way, cupertino, ca')
+    expect(result.addressParts).toContain('apple')
+    expect(result.addressParts).toContain('cupertino')
+    expect(result.addressParts).toContain('ca')
+  })
 })
 
 describe('normalizeDomain', () => {

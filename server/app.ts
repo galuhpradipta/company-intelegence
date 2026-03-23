@@ -8,6 +8,7 @@ import { companyRoute } from './routes/company.js'
 import { uploadsRoute } from './routes/uploads.js'
 import { newsRoute } from './routes/news.js'
 import { batchRoute } from './routes/batch.js'
+import { relevancyRoute } from './routes/relevancy.js'
 import { appRouter } from './trpc/router.js'
 import { createContext } from './trpc/context.js'
 
@@ -24,6 +25,7 @@ app.route('/api/company', companyRoute)
 app.route('/api/company', uploadsRoute)
 app.route('/api/news', newsRoute)
 app.route('/api/batch', batchRoute)
+app.route('/api/relevancy', relevancyRoute)
 
 // tRPC
 app.use('/trpc/*', trpcServer({

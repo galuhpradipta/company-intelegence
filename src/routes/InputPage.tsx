@@ -1,11 +1,10 @@
-import { useState } from 'react'
-import { useNavigate } from 'react-router'
+import { useNavigate, useSearchParams } from 'react-router'
 import { SingleCompanyForm } from '../features/company-input/SingleCompanyForm.js'
 import { CsvUpload } from '../features/csv-upload/CsvUpload.js'
 
 export function InputPage() {
-  const [tab, setTab] = useState<'single' | 'csv'>('single')
   const navigate = useNavigate()
+  const [searchParams, setSearchParams] = useSearchParams()
 
   function handleResolved(companyId: string) {
     navigate(`/company/${companyId}`)
@@ -13,6 +12,24 @@ export function InputPage() {
 
   function handleBatchCreated(batchId: string) {
     navigate(`/results/${batchId}`)
+  }
+
+  const initialValues = {
+    companyName: searchParams.get('companyName') ?? '',
+    domain: searchParams.get('domain') ?? '',
+    address: searchParams.get('address') ?? '',
+    city: searchParams.get('city') ?? '',
+    state: searchParams.get('state') ?? '',
+    country: searchParams.get('country') ?? 'US',
+    industry: searchParams.get('industry') ?? '',
+  }
+  const tab = searchParams.get('tab') === 'csv' ? 'csv' : 'single'
+  const singleFormKey = JSON.stringify(initialValues)
+
+  function updateTab(nextTab: 'single' | 'csv') {
+    const nextParams = new URLSearchParams(searchParams)
+    nextParams.set('tab', nextTab)
+    setSearchParams(nextParams, { replace: true })
   }
 
   return (
@@ -27,7 +44,7 @@ export function InputPage() {
       {/* Tab toggle */}
       <div className="flex bg-gray-100 rounded-lg p-1 mb-6 w-fit">
         <button
-          onClick={() => setTab('single')}
+          onClick={() => updateTab('single')}
           className={`px-4 py-2 rounded-md text-sm font-medium transition-colors ${
             tab === 'single'
               ? 'bg-white text-gray-900 shadow-sm'
@@ -37,7 +54,7 @@ export function InputPage() {
           Single Company
         </button>
         <button
-          onClick={() => setTab('csv')}
+          onClick={() => updateTab('csv')}
           className={`px-4 py-2 rounded-md text-sm font-medium transition-colors ${
             tab === 'csv'
               ? 'bg-white text-gray-900 shadow-sm'
@@ -49,7 +66,11 @@ export function InputPage() {
       </div>
 
       {tab === 'single' ? (
-        <SingleCompanyForm onResolved={handleResolved} />
+        <SingleCompanyForm
+          key={singleFormKey}
+          onResolved={handleResolved}
+          initialValues={initialValues}
+        />
       ) : (
         <CsvUpload onBatchCreated={handleBatchCreated} />
       )}

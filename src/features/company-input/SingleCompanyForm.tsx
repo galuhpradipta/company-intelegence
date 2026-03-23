@@ -3,17 +3,39 @@ import { trpc } from '../../lib/trpc.js'
 
 interface Props {
   onResolved: (companyId: string) => void
+  initialValues?: Partial<FormState>
 }
 
-export function SingleCompanyForm({ onResolved }: Props) {
-  const [form, setForm] = useState({
-    companyName: '',
-    domain: '',
-    city: '',
-    state: '',
-    country: 'US',
-    industry: '',
-  })
+interface FormState {
+  companyName: string
+  domain: string
+  address: string
+  city: string
+  state: string
+  country: string
+  industry: string
+}
+
+const EMPTY_FORM: FormState = {
+  companyName: '',
+  domain: '',
+  address: '',
+  city: '',
+  state: '',
+  country: 'US',
+  industry: '',
+}
+
+function createInitialForm(initialValues?: Partial<FormState>): FormState {
+  return {
+    ...EMPTY_FORM,
+    ...initialValues,
+    country: initialValues?.country || 'US',
+  }
+}
+
+export function SingleCompanyForm({ onResolved, initialValues }: Props) {
+  const [form, setForm] = useState<FormState>(() => createInitialForm(initialValues))
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState<string | null>(null)
   const [candidates, setCandidates] = useState<Array<{
@@ -26,7 +48,7 @@ export function SingleCompanyForm({ onResolved }: Props) {
   }> | null>(null)
   const [resolutionInputId, setResolutionInputId] = useState<string | null>(null)
 
-  function set(key: string, value: string) {
+  function set(key: keyof FormState, value: string) {
     setForm((f) => ({ ...f, [key]: value }))
     setCandidates(null)
     setError(null)
@@ -42,6 +64,7 @@ export function SingleCompanyForm({ onResolved }: Props) {
       const result = await trpc.company.resolve.mutate({
         companyName: form.companyName,
         domain: form.domain || undefined,
+        address: form.address || undefined,
         city: form.city || undefined,
         state: form.state || undefined,
         country: form.country || undefined,
@@ -111,6 +134,16 @@ export function SingleCompanyForm({ onResolved }: Props) {
               className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
             />
           </div>
+        </div>
+        <div>
+          <label className="block text-sm font-medium text-gray-700 mb-1">Address</label>
+          <input
+            type="text"
+            value={form.address}
+            onChange={(e) => set('address', e.target.value)}
+            placeholder="1 Apple Park Way"
+            className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
+          />
         </div>
         <div className="grid grid-cols-3 gap-3">
           <div>
