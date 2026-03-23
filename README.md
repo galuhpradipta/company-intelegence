@@ -2,6 +2,14 @@
 
 A micro-app that resolves company identities, fetches news, and scores article relevancy using a multi-provider pipeline with deterministic confidence scoring and LLM-powered relevancy analysis.
 
+## Current Status
+
+- Verified on March 24, 2026: `pnpm build` passes.
+- Verified on March 24, 2026: `pnpm test -- --run tests/unit` passes with `56` tests across `10` files.
+- Verified on March 24, 2026: `pnpm test:e2e` passes with the Merclex smoke suite.
+- Active browser-test coverage is a Merclex smoke test under `e2e/merclex/`.
+- Archived auth/notes template Playwright files live under `legacy/playwright-template/` and are not part of the trial submission.
+
 ## Quick Start
 
 ```bash
@@ -14,22 +22,29 @@ pnpm install
 # 3. Run database migrations (requires DATABASE_URL)
 pnpm db:migrate
 
-# 4. Start development server
+# 4. Start both frontend + backend
+pnpm dev:all
+```
+
+If you want to run them separately:
+
+```bash
 pnpm dev          # frontend (Vite, port 5173)
 pnpm server:dev   # backend (Hono, port 3000)
 ```
 
-Or run both together:
+For a production-style local run:
 
 ```bash
-pnpm dev:all      # runs frontend + backend concurrently
+pnpm build
+pnpm start
 ```
 
-In production, the Vite build is served by the Hono server on a single port.
+In development, Vite proxies `/api` and `/trpc` requests to the Hono server on port `3000`.
 
 ## API Keys Setup
 
-One provider is recommended per category. Get these four keys before running the app.
+OpenAI is required. For company/news coverage, the app works best when you also provide at least one company data key and one news provider key.
 
 ### 1. OpenAI (required — relevancy scoring + AI fallback)
 
@@ -43,18 +58,29 @@ Sign up at https://platform.openai.com/signup
 OPENAI_API_KEY=sk-...
 ```
 
-### 2. NewsAPI (news ingestion)
+### 2. GNews (recommended news ingestion provider for the trial)
+
+Sign up at https://gnews.io/
+
+1. Generate an API key from the dashboard
+2. Free tier is limited but works with the current request shape in this repo
+
+```env
+GNEWS_API_KEY=your_key_here
+```
+
+### 3. NewsAPI (optional secondary news provider)
 
 Sign up at https://newsapi.org/register
 
 1. Register for a free account — your key is shown immediately on the dashboard
-2. Free tier: 100 requests/day, last 30 days of articles (sufficient for demo)
+2. The free tier can return `426 Upgrade required` for some query shapes, so treat it as optional fallback unless you have a paid plan
 
 ```env
 NEWS_API_KEY=your_key_here
 ```
 
-### 3. PeopleDataLabs (company firmographic data)
+### 4. PeopleDataLabs (recommended company firmographic data)
 
 Sign up at https://www.peopledatalabs.com/signup
 
@@ -65,11 +91,21 @@ Sign up at https://www.peopledatalabs.com/signup
 PEOPLE_DATA_LABS_API_KEY=your_key_here
 ```
 
-### 4. SEC EDGAR (corporate registry data)
+### 5. SEC EDGAR (corporate registry data)
 
 No signup or API key required. SEC EDGAR is a US government public database — completely free with no rate limit concerns for reasonable usage. The app queries it automatically.
 
 No `.env` entry needed.
+
+### 6. OpenCorporates (optional registry supplement)
+
+Sign up at https://opencorporates.com/
+
+The current repo includes an adapter and provider registry entry for OpenCorporates. If you have a key, you can add it to improve registry coverage.
+
+```env
+OPENCORPORATES_API_KEY=your_key_here
+```
 
 ### Final `.env`
 
@@ -80,9 +116,11 @@ OPENAI_API_KEY=sk-...
 OPENAI_MODEL=gpt-5.4-mini
 OPENAI_FALLBACK_MODEL=gpt-5.4
 
+GNEWS_API_KEY=your_gnews_key
 NEWS_API_KEY=your_newsapi_key
 
 PEOPLE_DATA_LABS_API_KEY=your_pdl_key
+OPENCORPORATES_API_KEY=your_opencorporates_key
 
 NODE_ENV=development
 PORT=3000
@@ -100,8 +138,10 @@ LOG_LEVEL=info
 | `OPENAI_API_KEY` | Yes | OpenAI API key for relevancy scoring and AI fallback |
 | `OPENAI_MODEL` | No | Default `gpt-5.4-mini` |
 | `OPENAI_FALLBACK_MODEL` | No | Default `gpt-5.4`, used for hard resolution cases |
-| `NEWS_API_KEY` | Yes | NewsAPI.org key |
+| `GNEWS_API_KEY` | Recommended | GNews key; the current best default for dev/manual fetches |
+| `NEWS_API_KEY` | Optional | NewsAPI key; useful as a secondary provider if your plan supports the query shape |
 | `PEOPLE_DATA_LABS_API_KEY` | Recommended | PDL firmographic enrichment |
+| `OPENCORPORATES_API_KEY` | Optional | OpenCorporates registry supplement |
 | `PORT` | No | Default `3000` |
 | `BATCH_CONCURRENCY` | No | Default `5` — parallel rows in CSV batch |
 | `PROVIDER_TIMEOUT_MS` | No | Default `10000` — per-provider request timeout |
@@ -160,7 +200,9 @@ interface CompanyProvider {
 }
 ```
 
-To add a new provider: create one file in `server/providers/company/`, implement the interface, add it to the `PROVIDERS` array in `server/services/company-resolution/orchestrator.ts`. No other changes needed.
+Deterministic providers are composed through `server/providers/company/registry.ts`, so the resolution orchestrator stays focused on flow control and persistence instead of provider wiring.
+
+To add a new provider: create one file in `server/providers/company/`, implement the interface, and register it in `server/providers/company/registry.ts`.
 
 ### Confidence Scoring
 
@@ -170,7 +212,7 @@ Scoring is fully deterministic before any AI involvement:
 |---|---|
 | Domain exact match | 40 |
 | Company name similarity (Jaccard) | 0–30 |
-| City + state alignment | 0–15 |
+| Address / city / state alignment | 0–15 |
 | Industry alignment | 0–10 |
 | Country match | 0–5 |
 
@@ -187,9 +229,9 @@ Candidates from different providers are clustered by shared domain (exact match)
 - Employee count / industry: freshest firmographic source wins
 - Address: registry or provider with freshest timestamp wins
 
-All raw payloads are preserved in `company_source_records` regardless of which value won.
+All raw payloads are preserved in `company_source_records` regardless of which value won, and each source record now stores field-level confidence/value metadata for canonical fields such as legal name, domain, industry, employee count, and HQ location.
 
-**AI fallback safety rule**: The AI fallback provider cannot produce a `confident` tier match unless at least one hard signal exists (exact domain match, or legal-name + country alignment). This prevents the model from inventing matches for weak inputs.
+Durable external identifiers exposed by providers are persisted in `company_identifiers`. Today that includes SEC `cik`/`ticker`, People Data Labs IDs, and OpenCorporates company numbers when available.
 
 ### Relevancy Scoring Prompts
 
@@ -229,7 +271,8 @@ Articles below 30 are stored but hidden in the default view. Scoring runs with c
 ## Testing
 
 ```bash
-vp test run tests/unit   # 42 unit tests (scorer, merger, normalizer, CSV parser, deduplicator)
+pnpm test -- --run tests/unit   # 56 unit tests
+pnpm test:e2e                   # Merclex smoke test
 ```
 
 Coverage priorities per spec:
@@ -238,6 +281,9 @@ Coverage priorities per spec:
 - `tests/unit/normalizer.test.ts` — legal suffix stripping, domain/country normalization
 - `tests/unit/csv-parser.test.ts` — BOM handling, empty rows, case-insensitive columns, trim
 - `tests/unit/deduplicator.test.ts` — URL dedup, title fingerprint, 72-hour event window
+- `tests/unit/persistence-metadata.test.ts` — field-confidence and identifier extraction for persistence
+
+Browser coverage is intentionally narrow right now: the active Playwright suite only checks the Merclex input entry points. The older auth/notes browser tests were archived because they were template scaffolding, not part of this trial.
 
 ## Provider Access Notes
 
@@ -245,8 +291,9 @@ Coverage priorities per spec:
 |---|---|---|
 | SEC EDGAR | Free, no key needed | US government public database; no rate limit concerns for reasonable usage |
 | PeopleDataLabs | Paid; free trial available | Set `PEOPLE_DATA_LABS_API_KEY`; provider skips gracefully if unset |
-| NewsAPI | Free tier for dev | `NEWS_API_KEY` required; upgrade blocked 426 errors are handled gracefully |
-| GNews | Free tier (10 req/day) | `GNEWS_API_KEY` required; falls back if unset |
+| OpenCorporates | Optional | `OPENCORPORATES_API_KEY` improves registry coverage; adapter skips gracefully if unset or rate limited |
+| GNews | Free tier (limited) | `GNEWS_API_KEY` is the recommended news key for this repo’s current request shape |
+| NewsAPI | Optional secondary provider | Free-tier plans can hit `426 Upgrade required`; the provider fails gracefully |
 | OpenAI | Paid | `OPENAI_API_KEY` required for relevancy scoring and AI fallback |
 
 If any provider is unavailable, the pipeline continues with remaining providers. A warning is logged with the specific reason (missing key, auth failure, rate limit). The orchestrator falls back to AI-assisted resolution only when all deterministic providers return no results.
@@ -258,6 +305,6 @@ If any provider is unavailable, the pipeline continues with remaining providers.
 3. Add a Node web service pointing to this repo
 4. Set build command: `pnpm install --frozen-lockfile && pnpm build`
 5. Set start command: `pnpm start`
-6. Add environment variables: `OPENAI_API_KEY`, `NEWS_API_KEY` or `GNEWS_API_KEY`
+6. Add environment variables: `OPENAI_API_KEY`, plus any of `GNEWS_API_KEY`, `NEWS_API_KEY`, `PEOPLE_DATA_LABS_API_KEY`, `OPENCORPORATES_API_KEY` that you plan to use
 7. After first deploy, run migrations: `railway run pnpm db:migrate`
 8. Verify: `GET /api/health`

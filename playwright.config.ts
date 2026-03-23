@@ -1,29 +1,25 @@
 import { defineConfig, devices } from "@playwright/test";
 
 export default defineConfig({
-  testDir: "./e2e",
+  testDir: "./e2e/merclex",
   fullyParallel: false,
   forbidOnly: !!process.env.CI,
   retries: process.env.CI ? 2 : 0,
   workers: 1,
-  reporter: "html",
+  reporter: process.env.CI ? "line" : "list",
   use: {
-    baseURL: "http://localhost:8788",
+    baseURL: "http://localhost:5173",
     trace: "on-first-retry",
   },
   projects: [
     {
-      name: "chromium-mobile",
-      use: { ...devices["Pixel 7"] },
-    },
-    {
-      name: "webkit-mobile",
-      use: { ...devices["iPhone 14"] },
+      name: "chromium",
+      use: { ...devices["Desktop Chrome"] },
     },
   ],
   webServer: {
-    command: "pnpm db:migrate:local && pnpm build && pnpm cf:dev",
-    url: "http://localhost:8788",
+    command: "pnpm dev:all",
+    url: "http://localhost:5173",
     reuseExistingServer: !process.env.CI,
     timeout: 120_000,
   },
