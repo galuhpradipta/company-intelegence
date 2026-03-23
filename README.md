@@ -65,13 +65,11 @@ Sign up at https://www.peopledatalabs.com/signup
 PEOPLE_DATA_LABS_API_KEY=your_key_here
 ```
 
-### 4. OpenCorporates (corporate registry data)
+### 4. SEC EDGAR (corporate registry data)
 
-No key needed — the free tier works out of the box. If you hit rate limits during heavy use, sign up at https://opencorporates.com/api_accounts/new for a free key:
+No signup or API key required. SEC EDGAR is a US government public database — completely free with no rate limit concerns for reasonable usage. The app queries it automatically.
 
-```env
-OPENCORPORATES_API_KEY=your_key_here   # optional
-```
+No `.env` entry needed.
 
 ### Final `.env`
 
@@ -85,7 +83,6 @@ OPENAI_FALLBACK_MODEL=gpt-5.4
 NEWS_API_KEY=your_newsapi_key
 
 PEOPLE_DATA_LABS_API_KEY=your_pdl_key
-OPENCORPORATES_API_KEY=   # optional
 
 NODE_ENV=development
 PORT=3000
@@ -105,7 +102,6 @@ LOG_LEVEL=info
 | `OPENAI_FALLBACK_MODEL` | No | Default `gpt-5.4`, used for hard resolution cases |
 | `NEWS_API_KEY` | Yes | NewsAPI.org key |
 | `PEOPLE_DATA_LABS_API_KEY` | Recommended | PDL firmographic enrichment |
-| `OPENCORPORATES_API_KEY` | Optional | OpenCorporates rate limit bypass |
 | `PORT` | No | Default `3000` |
 | `BATCH_CONCURRENCY` | No | Default `5` — parallel rows in CSV batch |
 | `PROVIDER_TIMEOUT_MS` | No | Default `10000` — per-provider request timeout |
@@ -125,7 +121,7 @@ LOG_LEVEL=info
 
 ```
 server/
-├── providers/company/   # CompanyProvider interface + PDL, OpenCorporates, AI fallback adapters
+├── providers/company/   # CompanyProvider interface + PDL, SEC EDGAR, AI fallback adapters
 ├── providers/news/      # NewsProvider interface + NewsAPI, GNews adapters
 ├── services/
 │   ├── company-resolution/  # normalizer, scorer, merger, orchestrator
@@ -226,7 +222,7 @@ Articles below 30 are stored but hidden in the default view. Scoring runs with c
 ### International Support (v2 changes)
 
 - Address normalization needs country-specific parsing (postcode formats, regional divisions)
-- OpenCorporates jurisdiction code should be dynamic based on input country
+- SEC EDGAR jurisdiction filtering should be extended to support international registries in v2
 - Legal suffix stripping needs an international list (GmbH, AG, S.A., B.V., etc.) — already partially implemented but not exhaustive
 - PeopleDataLabs supports international company data out of the box, but country filtering and scoring weights assume US-first signals
 
@@ -247,7 +243,7 @@ Coverage priorities per spec:
 
 | Provider | Access | Notes |
 |---|---|---|
-| OpenCorporates | Free tier, no key needed | Rate limited; `OPENCORPORATES_API_KEY` bypasses limits |
+| SEC EDGAR | Free, no key needed | US government public database; no rate limit concerns for reasonable usage |
 | PeopleDataLabs | Paid; free trial available | Set `PEOPLE_DATA_LABS_API_KEY`; provider skips gracefully if unset |
 | NewsAPI | Free tier for dev | `NEWS_API_KEY` required; upgrade blocked 426 errors are handled gracefully |
 | GNews | Free tier (10 req/day) | `GNEWS_API_KEY` required; falls back if unset |

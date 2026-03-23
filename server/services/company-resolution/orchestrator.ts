@@ -6,12 +6,12 @@ import { normalizeInput } from './normalizer.js'
 import { scoreCandidate, toMatchTier } from './scorer.js'
 import { clusterCandidates } from './merger.js'
 import { PeopleDataLabsProvider } from '../../providers/company/people-data-labs.js'
-import { OpenCorporatesProvider } from '../../providers/company/opencorporates.js'
+import { SecEdgarProvider } from '../../providers/company/sec-edgar.js'
 import { AiFallbackProvider } from '../../providers/company/ai-fallback.js'
 
 const PROVIDERS: CompanyProvider[] = [
   new PeopleDataLabsProvider(),
-  new OpenCorporatesProvider(),
+  new SecEdgarProvider(),
 ]
 
 const AI_FALLBACK = new AiFallbackProvider()
