@@ -13,8 +13,8 @@
     "strict": true,
     "noUnusedLocals": true,
     "noUnusedParameters": true,
-    "types": ["@cloudflare/workers-types"]
+    "types": ["node"]
   },
-  "include": ["vite.config.ts", "server/**/*.ts", "functions/**/*.ts", "drizzle.config.ts"],
+  "include": ["vite.config.ts", "server/**/*.ts", "drizzle.config.ts"],
   "exclude": ["server/**/*.test.ts"]
 }
