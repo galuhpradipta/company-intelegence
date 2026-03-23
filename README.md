@@ -5,9 +5,9 @@ A micro-app that resolves company identities, fetches news, and scores article r
 ## Current Status
 
 - Verified on March 24, 2026: `pnpm build` passes.
-- Verified on March 24, 2026: `pnpm test -- --run tests/unit` passes with `56` tests across `10` files.
-- Verified on March 24, 2026: `pnpm test:e2e` passes with the Merclex smoke suite.
-- Active browser-test coverage is a Merclex smoke test under `e2e/merclex/`.
+- Verified on March 24, 2026: `pnpm test -- --run tests/unit server/routes/relevancy.test.ts` passes with `61` tests across `12` files.
+- Verified on March 24, 2026: `pnpm test:e2e` passes with `3` Merclex browser tests.
+- Active browser-test coverage under `e2e/merclex/` now covers the input smoke path, single-company resolve -> detail -> news, and CSV upload -> progress -> result actions.
 - Archived auth/notes template Playwright files live under `legacy/playwright-template/` and are not part of the trial submission.
 
 ## Quick Start

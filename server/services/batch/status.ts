@@ -43,6 +43,42 @@ export interface BatchStatusItem {
   suggestedCandidates: BatchCandidateSummary[]
 }
 
+interface BatchStatusBuildRecord {
+  batch: {
+    id: string
+    status: string
+    totalRows: number
+    processedRows: number
+  }
+  items: Array<{
+    rowNumber: number
+    status: string
+    resolutionInputId: string | null
+    resultCompanyId: string | null
+    errorMessage: string | null
+  }>
+  inputRecords: Array<{
+    id: string
+    rawInput: unknown
+  }>
+  matchRecords: Array<{
+    resolutionInputId: string
+    companyId: string
+    rank: number
+    score: number
+    selected: boolean
+  }>
+  companyRecords: Array<{
+    id: string
+    displayName: string
+    domain: string | null
+  }>
+  sourceRecords: Array<{
+    companyId: string
+    provider: string
+  }>
+}
+
 export async function getBatchStatus(batchId: string) {
   const batch = await db.query.batchUploads.findFirst({
     where: eq(batchUploads.id, batchId),
@@ -92,18 +128,56 @@ export async function getBatchStatus(batchId: string) {
       .where(inArray(companySourceRecords.companyId, companyIds))
     : []
 
-  const inputById = new Map(inputRecords.map((record) => [record.id, record]))
-  const companyById = new Map(companyRecords.map((company) => [company.id, company]))
-  const matchesByResolutionInputId = new Map<string, typeof matchRecords>()
+  return buildBatchStatusPayload({
+    batch: {
+      id: batch.id,
+      status: batch.status,
+      totalRows: batch.totalRows,
+      processedRows: batch.processedRows,
+    },
+    items: items.map((item) => ({
+      rowNumber: item.rowNumber,
+      status: item.status,
+      resolutionInputId: item.resolutionInputId ?? null,
+      resultCompanyId: item.resultCompanyId ?? null,
+      errorMessage: item.errorMessage ?? null,
+    })),
+    inputRecords: inputRecords.map((record) => ({
+      id: record.id,
+      rawInput: record.rawInput,
+    })),
+    matchRecords: matchRecords.map((match) => ({
+      resolutionInputId: match.resolutionInputId,
+      companyId: match.companyId,
+      rank: match.rank,
+      score: match.score,
+      selected: match.selected,
+    })),
+    companyRecords: companyRecords.map((company) => ({
+      id: company.id,
+      displayName: company.displayName,
+      domain: company.domain,
+    })),
+    sourceRecords: sourceRecords.map((record) => ({
+      companyId: record.companyId,
+      provider: record.provider,
+    })),
+  })
+}
+
+export function buildBatchStatusPayload(records: BatchStatusBuildRecord) {
+  const inputById = new Map(records.inputRecords.map((record) => [record.id, record]))
+  const companyById = new Map(records.companyRecords.map((company) => [company.id, company]))
+  const matchesByResolutionInputId = new Map<string, typeof records.matchRecords>()
   const sourceProvidersByCompanyId = new Map<string, string[]>()
 
-  for (const match of matchRecords) {
+  for (const match of records.matchRecords) {
     const existing = matchesByResolutionInputId.get(match.resolutionInputId) ?? []
     existing.push(match)
     matchesByResolutionInputId.set(match.resolutionInputId, existing)
   }
 
-  for (const record of sourceRecords) {
+  for (const record of records.sourceRecords) {
     const providers = sourceProvidersByCompanyId.get(record.companyId) ?? []
     if (!providers.includes(record.provider)) {
       providers.push(record.provider)
@@ -111,7 +185,7 @@ export async function getBatchStatus(batchId: string) {
     sourceProvidersByCompanyId.set(record.companyId, providers)
   }
 
-  const detailedItems: BatchStatusItem[] = items.map((item) => {
+  const detailedItems: BatchStatusItem[] = records.items.map((item) => {
     const inputRecord = item.resolutionInputId ? inputById.get(item.resolutionInputId) : undefined
     const submittedInput = toSubmittedInput(inputRecord?.rawInput)
     const matches = item.resolutionInputId
@@ -132,7 +206,6 @@ export async function getBatchStatus(batchId: string) {
         selected: match.selected,
       }]
     })
-
     const selectedCandidate = suggestedCandidates.find((candidate) => candidate.selected)
       ?? suggestedCandidates[0]
       ?? null
@@ -146,8 +219,8 @@ export async function getBatchStatus(batchId: string) {
     return {
       rowNumber: item.rowNumber,
       status: item.status,
-      resolutionInputId: item.resolutionInputId ?? null,
-      companyId: selectedCandidate?.companyId ?? item.resultCompanyId ?? null,
+      resolutionInputId: item.resolutionInputId,
+      companyId: selectedCandidate?.companyId ?? item.resultCompanyId,
       confidenceScore: selectedCandidate?.confidenceScore ?? (matchTier === 'not_found' ? 0 : null),
       matchTier,
       errorMessage: item.errorMessage,
@@ -165,10 +238,10 @@ export async function getBatchStatus(batchId: string) {
   }
 
   return {
-    batchId: batch.id,
-    status: batch.status,
-    totalRows: batch.totalRows,
-    processedRows: batch.processedRows,
+    batchId: records.batch.id,
+    status: records.batch.status,
+    totalRows: records.batch.totalRows,
+    processedRows: records.batch.processedRows,
     counts,
     items: detailedItems,
   }
