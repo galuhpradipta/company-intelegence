@@ -11,6 +11,7 @@
     "prepare": "vp config",
     "test": "vp test",
     "server:dev": "tsx watch server/index.ts",
+    "dev:all": "concurrently \"pnpm dev\" \"pnpm server:dev\"",
     "db:generate": "drizzle-kit generate",
     "db:migrate": "drizzle-kit migrate",
     "start": "node dist/server/index.js",
@@ -43,6 +44,7 @@
     "zustand": "^5.0.12"
   },
   "devDependencies": {
+    "concurrently": "^9.0.0",
     "@eslint/js": "^9.39.4",
     "@playwright/test": "^1.58.2",
     "@tailwindcss/postcss": "^4.2.1",
@@ -63,7 +65,8 @@
     "typescript": "~5.9.3",
     "typescript-eslint": "^8.56.1",
     "vite": "npm:@voidzero-dev/vite-plus-core@latest",
-    "vite-plus": "latest"
+    "vite-plus": "latest",
+    "vitest": "npm:@voidzero-dev/vite-plus-test@^0.1.13"
   },
   "packageManager": "pnpm@10.32.1",
   "pnpm": {

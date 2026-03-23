@@ -1,214 +1,200 @@
-# viteplus-cf-template
+# Merclex Company Intelligence
 
-A full-stack starter template: **React 19 + Vite + Hono + Cloudflare Pages/D1/R2**.
+A micro-app that resolves company identities, fetches news, and scores article relevancy using a multi-provider pipeline with deterministic confidence scoring and LLM-powered relevancy analysis.
 
-Includes a minimal Notes CRUD demo that demonstrates every pattern — auth, data loading, forms, toasts, confirmation dialogs — so you can delete it and replace it with your own domain.
-
----
-
-## Stack
-
-| Layer | Technology |
-|---|---|
-| Frontend | React 19, React Router v7 (data router + lazy routes) |
-| Styling | Tailwind CSS v4, Base UI |
-| State | Zustand v5 (persisted auth store) |
-| Icons | Phosphor Icons |
-| Build | Vite (vite-plus), TypeScript 5.9 |
-| Backend | Hono on Cloudflare Pages Functions |
-| Database | Cloudflare D1 (SQLite) via Drizzle ORM |
-| Storage | Cloudflare R2 |
-| Auth | JWT (jose) + PBKDF2 password hashing |
-| Validation | Zod |
-| Testing | Vitest (unit), Playwright (E2E) |
-| Package manager | pnpm 10 |
-
----
-
-## Quick start
+## Quick Start
 
 ```bash
-# 1. Clone and install
-git clone <your-repo> my-app
-cd my-app
+# 1. Copy and fill in env vars
+cp .env.example .env
+
+# 2. Install dependencies
 pnpm install
 
-# 2. Copy env file and set your JWT secret
-cp .dev.vars.example .dev.vars
-# Edit .dev.vars: JWT_SECRET=<random string>
+# 3. Run database migrations (requires DATABASE_URL)
+pnpm db:migrate
 
-# 3. Create a D1 database
-pnpm db:create
-# Copy the database_id from the output into wrangler.json
-
-# 4. Run migrations locally
-pnpm db:migrate:local
-
-# 5. Build and start the local Cloudflare dev server
-pnpm build && pnpm cf:dev
-
-# App is running at http://localhost:8788
+# 4. Start development server
+pnpm dev          # frontend (Vite, port 5173)
+pnpm server:dev   # backend (Hono, port 3000)
 ```
 
----
+Or run both together:
 
-## Available scripts
-
-| Script | Description |
-|---|---|
-| `pnpm dev` | Vite dev server (no Workers runtime) |
-| `pnpm build` | TypeScript check + Vite build |
-| `pnpm cf:dev` | Local Cloudflare Pages dev (full stack) |
-| `pnpm cf:deploy` | Deploy to Cloudflare Pages |
-| `pnpm test` | Run Vitest unit tests |
-| `pnpm test:e2e` | Run Playwright E2E tests |
-| `pnpm test:e2e:visual` | Run Playwright with visible browser + slow-mo |
-| `pnpm lint` | ESLint |
-| `pnpm db:create` | Create a new D1 database |
-| `pnpm db:generate` | Generate Drizzle migrations from schema |
-| `pnpm db:migrate` | Apply migrations to remote D1 |
-| `pnpm db:migrate:local` | Apply migrations to local D1 |
-
----
-
-## Project structure
-
-```
-├── functions/api/[[route]].ts   # Hono app entry — Cloudflare Pages Functions
-├── server/
-│   ├── schema.ts                # Drizzle table definitions + inferred types
-│   ├── lib/
-│   │   ├── auth.ts              # PBKDF2 + JWT (portable, no Node deps)
-│   │   └── env.ts               # Cloudflare bindings type
-│   ├── middleware/auth.ts       # Bearer JWT middleware for Hono
-│   └── routes/
-│       ├── auth.ts              # POST /register, /login, GET/PUT /me
-│       └── notes.ts             # CRUD /notes (demo — replace with your domain)
-├── src/
-│   ├── router.ts                # React Router config with loaders
-│   ├── main.tsx                 # App entry — ErrorBoundary + Suspense
-│   ├── components/              # Layout, Header, BottomNav, Toast, ConfirmDialog
-│   ├── features/
-│   │   ├── auth/                # LoginPage, RegisterPage
-│   │   └── notes/               # NoteDetailPage, NoteFormPage (demo)
-│   ├── routes/
-│   │   ├── HomePage.tsx         # Notes list dashboard (demo)
-│   │   └── NotFoundPage.tsx
-│   └── shared/
-│       ├── config.ts            # APP_NAME, STORAGE_PREFIX
-│       ├── hooks/               # useApi, useAuth, useOnline, usePageTitle
-│       ├── store/               # authStore (persisted), toastStore
-│       └── utils/apiFetch.ts    # Loader-friendly fetch (redirects on 401)
-├── drizzle/migrations/          # SQL migration files
-├── e2e/                         # Playwright tests
-└── public/                      # Static assets, PWA manifest
-```
-
----
-
-## Adding a new feature
-
-### 1. Add a server route
-
-```ts
-// server/routes/widgets.ts
-import { Hono } from "hono";
-import { authMiddleware } from "../middleware/auth.ts";
-
-export const widgetsRoutes = new Hono()
-  .use("*", authMiddleware)
-  .get("/", async (c) => { /* ... */ })
-  .post("/", async (c) => { /* ... */ });
-```
-
-Mount it in `functions/api/[[route]].ts`:
-```ts
-app.route("/widgets", widgetsRoutes);
-```
-
-### 2. Add a schema table
-
-```ts
-// server/schema.ts
-export const widgets = sqliteTable("widgets", { ... });
-```
-
-Then generate and apply:
 ```bash
-pnpm db:generate
-pnpm db:migrate:local
+pnpm dev:all      # runs frontend + backend concurrently
 ```
 
-### 3. Add a client route
+In production, the Vite build is served by the Hono server on a single port.
 
-```ts
-// src/router.ts — inside the auth-required Layout group:
-{
-  path: "widgets",
-  loader: () => loadOr(() => apiFetch("/widgets"), []),
-  lazy: async () => {
-    const { default: Component } = await import("./features/widgets/WidgetsPage.tsx");
-    return { Component };
-  },
-},
+## Environment Variables
+
+| Variable | Required | Description |
+|---|---|---|
+| `DATABASE_URL` | Yes | PostgreSQL connection string |
+| `OPENAI_API_KEY` | Yes | OpenAI API key for relevancy scoring and AI fallback |
+| `OPENAI_MODEL` | No | Default `gpt-5.4-mini` |
+| `OPENAI_FALLBACK_MODEL` | No | Default `gpt-5.4`, used for hard resolution cases |
+| `NEWS_API_KEY` | One required | NewsAPI.org key |
+| `GNEWS_API_KEY` | One required | GNews.io key (alternative) |
+| `PEOPLE_DATA_LABS_API_KEY` | Recommended | PDL firmographic enrichment |
+| `OPENCORPORATES_API_KEY` | Optional | OpenCorporates rate limit bypass |
+| `PORT` | No | Default `3000` |
+| `BATCH_CONCURRENCY` | No | Default `5` — parallel rows in CSV batch |
+| `PROVIDER_TIMEOUT_MS` | No | Default `10000` — per-provider request timeout |
+| `NEWS_LOOKBACK_DAYS` | No | Default `30` — news lookback window |
+
+## Architecture
+
+### Stack
+
+- **Frontend**: React 19 + Vite + TypeScript + Tailwind v4 + React Router v7
+- **Backend**: Node.js + Hono (HTTP) + tRPC (typed client-server contracts)
+- **Database**: PostgreSQL + Drizzle ORM
+- **AI**: OpenAI Responses API with Structured Outputs (`gpt-5.4-mini`)
+- **Deployment**: Railway (one web service + one Postgres service)
+
+### Module Overview
+
+```
+server/
+├── providers/company/   # CompanyProvider interface + PDL, OpenCorporates, AI fallback adapters
+├── providers/news/      # NewsProvider interface + NewsAPI, GNews adapters
+├── services/
+│   ├── company-resolution/  # normalizer, scorer, merger, orchestrator
+│   ├── news-ingestion/      # deduplicator, ingestion-service
+│   ├── relevancy/           # scoring-service (OpenAI structured output)
+│   └── batch/               # csv-parser, batch-processor
+├── trpc/routers/        # company, news, relevancy, batch tRPC procedures
+└── routes/              # Hono REST handlers (thin wrappers over services)
 ```
 
-### 4. Add to the nav
+### Schema Design
 
-```ts
-// src/components/BottomNav.tsx
-{ to: "/widgets", icon: Cube, label: "Widgets" },
-```
+Nine PostgreSQL tables:
 
----
+- `resolution_inputs` — raw and normalized user inputs, with status tracking
+- `batch_uploads` / `batch_upload_items` — CSV upload state for progress polling
+- `companies` — canonical company records with confidence score and match tier
+- `company_identifiers` — extensible key-value store (EIN, LinkedIn URL, ticker, etc.)
+- `company_source_records` — raw provider payloads with field-level confidence tracking
+- `company_matches` — ranked candidates per resolution input with score breakdowns
+- `news_articles` — deduplicated article store with URL hash and title fingerprint
+- `company_articles` — join table linking companies to articles with search context
+- `article_relevancy_scores` — LLM scores with model metadata, category, and explanation
 
-## Customization
+**Why this schema**: The `company_source_records` table preserves full raw payloads from every provider, allowing the pipeline to re-derive canonical fields if provider data quality improves or precedence rules change. `company_matches` separates ranked suggestions from canonical company records, which is important because the same company can appear as a candidate for many inputs.
 
-### App name
+### Provider Abstraction
 
-Edit `src/shared/config.ts`:
-```ts
-export const APP_NAME = "My App";
-export const STORAGE_PREFIX = "myapp";  // localStorage key prefix
-```
+Every company data source implements one interface:
 
-### Design tokens
-
-Edit `src/index.css` — the `@theme` block:
-```css
-@theme {
-  --color-app-accent: #your-brand-color;
-  --color-app-bg: #your-bg-color;
-  /* ... */
+```typescript
+interface CompanyProvider {
+  name: string
+  reliabilityFactor: number  // 0.6–1.0
+  search(input: NormalizedInput): Promise<CandidateCompany[]>
 }
 ```
 
-All components use `text-app-accent`, `bg-app-surface`, etc. — Tailwind picks them up automatically.
+To add a new provider: create one file in `server/providers/company/`, implement the interface, add it to the `PROVIDERS` array in `server/services/company-resolution/orchestrator.ts`. No other changes needed.
 
----
+### Confidence Scoring
 
-## Deployment to Cloudflare Pages
+Scoring is fully deterministic before any AI involvement:
 
-```bash
-# 1. Create production D1 database (if not already done)
-pnpm db:create
+| Signal | Points |
+|---|---|
+| Domain exact match | 40 |
+| Company name similarity (Jaccard) | 0–30 |
+| City + state alignment | 0–15 |
+| Industry alignment | 0–10 |
+| Country match | 0–5 |
 
-# 2. Apply migrations to production
-pnpm db:migrate
+Raw score (0–100) is multiplied by a provider reliability factor (registry=1.0, firmographic=0.9, scraping=0.7, AI fallback=0.6).
 
-# 3. Set JWT_SECRET in Cloudflare Pages dashboard
-#    Settings → Environment variables → JWT_SECRET
+**Tiers**: ≥85 = Confident, 50–84 = Suggested, <50 = Not Found.
 
-# 4. Deploy
-pnpm cf:deploy
+### Entity Resolution / Conflict Handling
+
+Candidates from different providers are clustered by shared domain (exact match) or high name token overlap (Jaccard ≥ 0.8). Within a cluster, fields are merged using provider precedence:
+
+- Legal name: registry > firmographic > scraping > AI fallback
+- Domain: user-provided > firmographic > scraping > AI fallback
+- Employee count / industry: freshest firmographic source wins
+- Address: registry or provider with freshest timestamp wins
+
+All raw payloads are preserved in `company_source_records` regardless of which value won.
+
+**AI fallback safety rule**: The AI fallback provider cannot produce a `confident` tier match unless at least one hard signal exists (exact domain match, or legal-name + country alignment). This prevents the model from inventing matches for weak inputs.
+
+### Relevancy Scoring Prompts
+
+Each article is scored with company context injected into the prompt:
+
+```
+Company: {name}, industry: {industry}, ~{employee_count} employees, {location}
+Article: {title} — {snippet or full_text up to 1000 chars}
 ```
 
----
+Output schema (strict Structured Output):
+- `relevancyScore`: integer 0–100
+- `category`: enum (financial_performance | litigation_legal | leadership_change | operational_risk | market_expansion | industry_sector)
+- `explanation`: string, max 160 chars
 
-## About vite-plus
+Articles below 30 are stored but hidden in the default view. Scoring runs with concurrency 5 and retries transient failures up to 2 times with exponential backoff.
 
-This template uses [vite-plus](https://github.com/voidzero-dev/vite-plus), a drop-in Vite wrapper that adds:
-- Staged linting (`eslint --fix` on changed files before commit)
-- Vitest integration via `pnpm test`
+## Trade-offs and What I'd Do Differently
 
-To eject back to plain Vite: replace `"vite-plus"` imports with `"vite"` in `vite.config.ts` and `package.json`, and update the `pnpm overrides` block.
+### v1 Trade-offs Made
+
+- **In-process batch queue**: v1 runs CSV work in-process using `p-limit` with DB polling state. This is simple and sufficient for a demo but would not survive a server restart mid-batch in production. v2 would add a dedicated worker service and a durable queue (BullMQ or similar).
+
+- **No domain-level company deduplication across requests**: Two resolution inputs for the same domain may produce two company rows. v2 should add a unique constraint on `domain` in `companies` and handle upserts in the orchestrator.
+
+- **News provider fallback is sequential**: If NewsAPI fails, the system tries GNews. v2 could run both in parallel and merge results before deduplication.
+
+- **Relevancy scores are one-shot per company/article pair**: If the prompt or model changes, old scores are not re-evaluated. v2 should add a `prompt_version` invalidation sweep.
+
+### International Support (v2 changes)
+
+- Address normalization needs country-specific parsing (postcode formats, regional divisions)
+- OpenCorporates jurisdiction code should be dynamic based on input country
+- Legal suffix stripping needs an international list (GmbH, AG, S.A., B.V., etc.) — already partially implemented but not exhaustive
+- PeopleDataLabs supports international company data out of the box, but country filtering and scoring weights assume US-first signals
+
+## Testing
+
+```bash
+vp test run tests/unit   # 42 unit tests (scorer, merger, normalizer, CSV parser, deduplicator)
+```
+
+Coverage priorities per spec:
+- `tests/unit/scorer.test.ts` — confidence scoring algorithm, reliability factor application
+- `tests/unit/merger.test.ts` — entity clustering, provider precedence in field merge
+- `tests/unit/normalizer.test.ts` — legal suffix stripping, domain/country normalization
+- `tests/unit/csv-parser.test.ts` — BOM handling, empty rows, case-insensitive columns, trim
+- `tests/unit/deduplicator.test.ts` — URL dedup, title fingerprint, 72-hour event window
+
+## Provider Access Notes
+
+| Provider | Access | Notes |
+|---|---|---|
+| OpenCorporates | Free tier, no key needed | Rate limited; `OPENCORPORATES_API_KEY` bypasses limits |
+| PeopleDataLabs | Paid; free trial available | Set `PEOPLE_DATA_LABS_API_KEY`; provider skips gracefully if unset |
+| NewsAPI | Free tier for dev | `NEWS_API_KEY` required; upgrade blocked 426 errors are handled gracefully |
+| GNews | Free tier (10 req/day) | `GNEWS_API_KEY` required; falls back if unset |
+| OpenAI | Paid | `OPENAI_API_KEY` required for relevancy scoring and AI fallback |
+
+If any provider is unavailable, the pipeline continues with remaining providers. A warning is logged with the specific reason (missing key, auth failure, rate limit). The orchestrator falls back to AI-assisted resolution only when all deterministic providers return no results.
+
+## Deployment (Railway)
+
+1. Create a Railway project
+2. Add a PostgreSQL service — Railway exposes `DATABASE_URL` automatically
+3. Add a Node web service pointing to this repo
+4. Set build command: `pnpm install --frozen-lockfile && pnpm build`
+5. Set start command: `pnpm start`
+6. Add environment variables: `OPENAI_API_KEY`, `NEWS_API_KEY` or `GNEWS_API_KEY`
+7. After first deploy, run migrations: `railway run pnpm db:migrate`
+8. Verify: `GET /api/health`
