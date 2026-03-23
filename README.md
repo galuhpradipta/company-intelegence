@@ -43,6 +43,15 @@ pnpm start
 
 In development, Vite proxies `/api` and `/trpc` requests to the Hono server on port `3000`.
 
+## Manual CSV Fixtures
+
+For quick manual CSV upload testing, use the sample files under `manual-test-data/`:
+
+- `manual-test-data/companies.csv` — valid rows using real company names and official domains (`Stripe`, `Shopify`, `Figma`, `Slack`, `HubSpot`, `Atlassian`).
+- `manual-test-data/companies-invalid.csv` — same shape, but with one row missing `company_name` to exercise CSV validation errors.
+
+The supported CSV columns are `company_name,domain,address,city,state,country,industry`, and only `company_name` is required.
+
 ## E2E Test Modes
 
 ### Fast browser-mocked UI tests
