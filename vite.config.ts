@@ -11,4 +11,10 @@ export default defineConfig({
     environment: "node",
     include: ["tests/**/*.test.ts", "src/**/*.test.ts", "server/**/*.test.ts"],
   },
+  server: {
+    proxy: {
+      "/trpc": "http://localhost:3000",
+      "/api": "http://localhost:3000",
+    },
+  },
 });
