@@ -20,18 +20,18 @@ test("csv integration flow uses real backend batch processing with isolated data
   });
 
   await expect(page.getByText("Preview first 3 valid rows before processing:")).toBeVisible();
-  await expect(page.getByText("Row 5: company_name is required")).toBeVisible();
+  await expect(page.getByText("Row 5: Missing required field: company_name")).toBeVisible();
 
   await page.getByRole("button", { name: "Start Processing" }).click();
 
   await expect(page).toHaveURL(/\/results\/[0-9a-f-]+$/);
   await expect(page.getByText("3 / 3 processed")).toBeVisible({ timeout: 12_000 });
-  await expect(page.getByText("Confident")).toBeVisible();
-  await expect(page.getByText("Suggested")).toBeVisible();
-  await expect(page.getByText("Not Found")).toBeVisible();
-  await expect(page.getByText("Acme Corp")).toBeVisible();
-  await expect(page.getByText("Beta Labs Inc.")).toBeVisible();
-  await expect(page.getByText("Gamma Systems")).toBeVisible();
+  await expect(page.getByText("Confident", { exact: true }).first()).toBeVisible();
+  await expect(page.getByText("Suggested", { exact: true }).first()).toBeVisible();
+  await expect(page.getByText("Not Found", { exact: true }).first()).toBeVisible();
+  await expect(page.getByRole("heading", { name: "Acme Corp" })).toBeVisible();
+  await expect(page.getByRole("heading", { name: "Beta Labs Inc." })).toBeVisible();
+  await expect(page.getByRole("heading", { name: "Gamma Systems" })).toBeVisible();
   await expect(page.getByText("Top 3 candidates")).toBeVisible();
   await expect(page.getByRole("button", { name: "Selected" })).toBeVisible();
   await expect(page.getByRole("link", { name: "Retry with different inputs" })).toBeVisible();

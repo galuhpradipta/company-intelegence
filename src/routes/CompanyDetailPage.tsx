@@ -27,10 +27,21 @@ export function CompanyDetailPage() {
     setFetchingNews(true)
     try {
       await trpc.news.fetchForCompany.mutate(id)
-      await trpc.relevancy.scoreForCompany.mutate(id)
-      await loadNews(id, showAll)
     } catch (err) {
       console.warn('News fetch failed:', err)
+      return
+    }
+
+    try {
+      await trpc.relevancy.scoreForCompany.mutate(id)
+    } catch (err) {
+      console.warn('Relevancy scoring failed:', err)
+    }
+
+    try {
+      await loadNews(id, showAll)
+    } catch (err) {
+      console.warn('News reload failed:', err)
     } finally {
       setFetchingNews(false)
     }

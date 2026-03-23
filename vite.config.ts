@@ -1,6 +1,8 @@
 import { defineConfig } from "vite-plus";
 import react from "@vitejs/plugin-react";
 
+const apiProxyTarget = process.env.VITE_API_PROXY_TARGET ?? "http://localhost:3000";
+
 export default defineConfig({
   staged: {
     "*.{ts,tsx}": "eslint --fix",
@@ -13,8 +15,8 @@ export default defineConfig({
   },
   server: {
     proxy: {
-      "/trpc": "http://localhost:3000",
-      "/api": "http://localhost:3000",
+      "/trpc": apiProxyTarget,
+      "/api": apiProxyTarget,
     },
   },
 });

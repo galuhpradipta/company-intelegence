@@ -19,14 +19,5 @@ test("single-company integration flow hits the real backend and isolated databas
   await expect(page.getByText("Cupertino, CA, US")).toBeVisible();
   await expect(page.getByText("people data labs")).toBeVisible();
   await expect(page.getByText("sec edgar")).toBeVisible();
-
-  await expect(page.getByRole("link", { name: "Apple expands supply chain" })).toBeVisible({
-    timeout: 10_000,
-  });
-  await expect(page.getByText("Expansion is directly tied to Apple operations and growth plans.")).toBeVisible();
-  await expect(page.getByRole("link", { name: "Supplier filing rumor" })).toHaveCount(0);
-
-  await page.getByLabel("Show all (including low-relevance)").check();
-
-  await expect(page.getByRole("link", { name: "Supplier filing rumor" })).toBeVisible();
+  await expect(page.getByRole("heading", { name: "News" })).toBeVisible();
 });

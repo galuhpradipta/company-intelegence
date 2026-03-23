@@ -88,6 +88,7 @@ The Docker mode uses:
 - `E2E_DOCKER_USER` default `postgres`
 - `E2E_DOCKER_PASSWORD` default `postgres`
 - a running local Docker daemon (Docker Desktop, OrbStack, Colima, etc.)
+- dedicated test ports: frontend `4173`, backend `3300`
 
 If you want Docker to be the default integration mode, set:
 

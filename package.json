@@ -12,6 +12,7 @@
     "test": "vp test",
     "server:dev": "tsx watch server/index.ts",
     "dev:all": "concurrently \"pnpm dev\" \"pnpm server:dev\"",
+    "dev:all:e2e": "concurrently \"VITE_API_PROXY_TARGET=http://localhost:3300 pnpm dev -- --port 4173 --strictPort\" \"PORT=3300 pnpm server:dev\"",
     "db:generate": "drizzle-kit generate",
     "db:migrate": "drizzle-kit migrate",
     "start": "node dist/server/index.js",
