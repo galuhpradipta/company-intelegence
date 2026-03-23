@@ -45,10 +45,10 @@ function scoreDomain(candidateDomain?: string, inputDomain?: string): number {
   return norm(candidateDomain) === norm(inputDomain) ? 40 : 0
 }
 
-const LEGAL_SUFFIXES = /\b(inc|llc|ltd|pt|cv|corp|co|plc|gmbh|ag|sa|sas|bv|nv|pty|limited|incorporated)\b\.?$/gi
+const LEGAL_SUFFIXES = /\b(inc|llc|ltd|pt|cv|corp|co|plc|gmbh|ag|sa|sas|bv|nv|pty|limited|incorporated|pbc)\b\.?$/gi
 
 function stripLegal(name: string): string {
-  return name.toLowerCase().replace(LEGAL_SUFFIXES, '').trim()
+  return normalizeComparableText(name).replace(LEGAL_SUFFIXES, '').trim()
 }
 
 function tokenize(s: string): string[] {
@@ -65,6 +65,7 @@ function jaccardSimilarity(a: string[], b: string[]): number {
 
 function scoreName(candidateName: string, input: NormalizedInput): number {
   const stripped = stripLegal(candidateName)
+  if (stripped === input.companyName) return 30
   const candTokens = tokenize(stripped)
   const jaccard = jaccardSimilarity(candTokens, input.nameParts)
   // perfect match = 30 points
@@ -79,7 +80,7 @@ function scoreAddress(candidate: CandidateCompany, input: NormalizedInput): numb
   if (!hasStructuredLocation && !hasAddressSignal) return 0
 
   const cityMatch =
-    input.city && candidate.hqCity?.toLowerCase().includes(input.city) ? 8 : 0
+    input.city && isApproximateTextMatch(candidate.hqCity, input.city, 2) ? 8 : 0
   const stateMatch =
     input.state && candidate.hqState?.toLowerCase().includes(input.state) ? 4 : 0
 
@@ -106,6 +107,55 @@ function scoreIndustry(candidateIndustry?: string, inputIndustry?: string): numb
 function scoreCountry(candidateCountry?: string, inputCountry?: string): number {
   if (!inputCountry || !candidateCountry) return 5 // default US-first assumption
   return normalizeCountry(candidateCountry) === normalizeCountry(inputCountry) ? 5 : 0
+}
+
+function normalizeComparableText(value: string): string {
+  return value
+    .toLowerCase()
+    .replace(/[/.(),-]/g, ' ')
+    .replace(/\s+/g, ' ')
+    .trim()
+}
+
+function isApproximateTextMatch(candidateValue?: string, inputValue?: string, maxDistance = 1): boolean {
+  if (!candidateValue || !inputValue) return false
+
+  const normalizedCandidate = normalizeComparableText(candidateValue)
+  const normalizedInput = normalizeComparableText(inputValue)
+
+  if (!normalizedCandidate || !normalizedInput) return false
+  if (normalizedCandidate === normalizedInput) return true
+  if (normalizedCandidate.includes(normalizedInput) || normalizedInput.includes(normalizedCandidate)) return true
+
+  return levenshteinDistance(normalizedCandidate, normalizedInput) <= maxDistance
+}
+
+function levenshteinDistance(a: string, b: string): number {
+  if (a === b) return 0
+  if (a.length === 0) return b.length
+  if (b.length === 0) return a.length
+
+  const previous = Array.from({ length: b.length + 1 }, (_, index) => index)
+  const current = new Array<number>(b.length + 1)
+
+  for (let i = 1; i <= a.length; i++) {
+    current[0] = i
+
+    for (let j = 1; j <= b.length; j++) {
+      const substitutionCost = a[i - 1] === b[j - 1] ? 0 : 1
+      current[j] = Math.min(
+        current[j - 1] + 1,
+        previous[j] + 1,
+        previous[j - 1] + substitutionCost,
+      )
+    }
+
+    for (let j = 0; j < previous.length; j++) {
+      previous[j] = current[j]!
+    }
+  }
+
+  return previous[b.length]!
 }
 
 export function toMatchTier(score: number): 'confident' | 'suggested' | 'not_found' {

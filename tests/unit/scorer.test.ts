@@ -86,6 +86,61 @@ describe('scoreCandidate', () => {
     const breakdown = scoreCandidate(baseCandidate, input, 1.0)
     expect(breakdown.addressAlignment).toBeGreaterThan(0)
   })
+
+  it('treats public-benefit suffixes as legal suffixes for exact name matches', () => {
+    const candidate = { ...baseCandidate, displayName: 'Anthropic PBC' }
+    const input = {
+      ...baseInput,
+      companyName: 'anthropic',
+      domain: undefined,
+      industry: 'ai',
+      nameParts: ['anthropic'],
+    }
+
+    const breakdown = scoreCandidate(candidate, input, 0.9)
+    expect(breakdown.nameSimilarity).toBe(30)
+  })
+
+  it('accepts minor city typos during address scoring', () => {
+    const candidate = { ...baseCandidate, hqCity: 'San Francisco' }
+    const input = {
+      ...baseInput,
+      city: 'san fransisco',
+      state: 'ca',
+      address: '1 market st',
+      addressParts: ['market', 'st'],
+    }
+
+    const breakdown = scoreCandidate(candidate, input, 1.0)
+    expect(breakdown.addressAlignment).toBeGreaterThanOrEqual(12)
+  })
+
+  it('promotes an exact domain and normalized-name match to confident even with small location typos', () => {
+    const candidate = {
+      ...baseCandidate,
+      displayName: 'Anthropic PBC',
+      domain: 'anthropic.com',
+      industry: 'AI',
+      hqCity: 'San Francisco',
+      hqState: 'CA',
+      hqCountry: 'US',
+    }
+    const input = {
+      ...baseInput,
+      companyName: 'anthropic',
+      domain: 'anthropic.com',
+      city: 'san fransisco',
+      state: 'ca',
+      industry: 'ai',
+      address: '1 apple park way',
+      addressParts: ['apple', 'park', 'way'],
+      nameParts: ['anthropic'],
+    }
+
+    const breakdown = scoreCandidate(candidate, input, 0.9)
+    expect(breakdown.finalScore).toBeGreaterThanOrEqual(85)
+    expect(toMatchTier(breakdown.finalScore)).toBe('confident')
+  })
 })
 
 describe('toMatchTier', () => {

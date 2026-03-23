@@ -367,15 +367,21 @@ Scoring is fully deterministic before any AI involvement:
 
 This step runs in local application code and does not call OpenAI. In this repo, OpenAI is used for AI fallback resolution and article relevancy scoring, not for the base confidence calculation.
 
-| Signal | Points |
-|---|---|
-| Domain exact match | 40 |
-| Company name similarity (Jaccard) | 0–30 |
-| Address / city / state alignment | 0–15 |
-| Industry alignment | 0–10 |
-| Country match | 0–5 |
+| Signal | Points | Notes |
+|---|---|---|
+| Domain exact match | 40 | Exact after normalizing protocol, `www.`, and any path |
+| Company name similarity | 0-30 | Exact normalized name match gets 30; otherwise token Jaccard is used after stripping common legal suffixes such as `Inc`, `LLC`, and `PBC` |
+| Address / location alignment | 0-15 | City contributes 8 with minor typo tolerance, state contributes 4, and token overlap against city/state/country contributes up to 10, capped at 15 total |
+| Industry alignment | 0-10 | Case-insensitive substring match |
+| Country match | 0-5 | Exact normalized country match; defaults to 5 when either side is missing as a US-first fallback |
 
-Raw score (0–100) is multiplied by a provider reliability factor (registry=1.0, firmographic=0.9, scraping=0.7, AI fallback=0.6).
+Raw score (0-100) is multiplied by a provider reliability factor. Current factors in this repo are `sec_edgar=1.0`, `opencorporates=1.0`, `people_data_labs=0.9`, and `ai_fallback=0.6`.
+
+In code, the final score is:
+
+```ts
+finalScore = Math.min(100, Math.round(rawTotal * reliabilityFactor))
+```
 
 **Tiers**: ≥85 = Confident, 50–84 = Suggested, <50 = Not Found.
 
