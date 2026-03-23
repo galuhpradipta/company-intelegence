@@ -27,6 +27,74 @@ pnpm dev:all      # runs frontend + backend concurrently
 
 In production, the Vite build is served by the Hono server on a single port.
 
+## API Keys Setup
+
+One provider is recommended per category. Get these four keys before running the app.
+
+### 1. OpenAI (required — relevancy scoring + AI fallback)
+
+Sign up at https://platform.openai.com/signup
+
+1. Go to **API Keys** → **Create new secret key**
+2. Add billing at **Settings → Billing** (pay-as-you-go, no subscription needed)
+3. Cost: `gpt-5.4-mini` is ~$0.15/1M input tokens — scoring 30 articles per company costs roughly $0.002
+
+```env
+OPENAI_API_KEY=sk-...
+```
+
+### 2. NewsAPI (news ingestion)
+
+Sign up at https://newsapi.org/register
+
+1. Register for a free account — your key is shown immediately on the dashboard
+2. Free tier: 100 requests/day, last 30 days of articles (sufficient for demo)
+
+```env
+NEWS_API_KEY=your_key_here
+```
+
+### 3. PeopleDataLabs (company firmographic data)
+
+Sign up at https://www.peopledatalabs.com/signup
+
+1. Create an account and go to **API Keys** in the dashboard
+2. Free tier: 1,000 credits/month (~1,000 company lookups). Paid: ~$0.04–$0.10/record after that
+
+```env
+PEOPLE_DATA_LABS_API_KEY=your_key_here
+```
+
+### 4. OpenCorporates (corporate registry data)
+
+No key needed — the free tier works out of the box. If you hit rate limits during heavy use, sign up at https://opencorporates.com/api_accounts/new for a free key:
+
+```env
+OPENCORPORATES_API_KEY=your_key_here   # optional
+```
+
+### Final `.env`
+
+```env
+DATABASE_URL=postgresql://postgres:password@localhost:5432/merclex_intel
+
+OPENAI_API_KEY=sk-...
+OPENAI_MODEL=gpt-5.4-mini
+OPENAI_FALLBACK_MODEL=gpt-5.4
+
+NEWS_API_KEY=your_newsapi_key
+
+PEOPLE_DATA_LABS_API_KEY=your_pdl_key
+OPENCORPORATES_API_KEY=   # optional
+
+NODE_ENV=development
+PORT=3000
+BATCH_CONCURRENCY=5
+PROVIDER_TIMEOUT_MS=10000
+NEWS_LOOKBACK_DAYS=30
+LOG_LEVEL=info
+```
+
 ## Environment Variables
 
 | Variable | Required | Description |
@@ -35,8 +103,7 @@ In production, the Vite build is served by the Hono server on a single port.
 | `OPENAI_API_KEY` | Yes | OpenAI API key for relevancy scoring and AI fallback |
 | `OPENAI_MODEL` | No | Default `gpt-5.4-mini` |
 | `OPENAI_FALLBACK_MODEL` | No | Default `gpt-5.4`, used for hard resolution cases |
-| `NEWS_API_KEY` | One required | NewsAPI.org key |
-| `GNEWS_API_KEY` | One required | GNews.io key (alternative) |
+| `NEWS_API_KEY` | Yes | NewsAPI.org key |
 | `PEOPLE_DATA_LABS_API_KEY` | Recommended | PDL firmographic enrichment |
 | `OPENCORPORATES_API_KEY` | Optional | OpenCorporates rate limit bypass |
 | `PORT` | No | Default `3000` |
