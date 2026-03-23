@@ -14,7 +14,7 @@ const MOCK_NEWS_PROVIDERS: NewsProvider[] = [
 ]
 
 export function getNewsProviders(): NewsProvider[] {
-  return env.MERCLEX_MOCK_EXTERNAL_PROVIDERS
+  return env.COMPANY_INTELLIGENCE_MOCK_EXTERNAL_PROVIDERS
     ? MOCK_NEWS_PROVIDERS
     : LIVE_NEWS_PROVIDERS
 }

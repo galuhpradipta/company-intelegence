@@ -23,13 +23,13 @@ const MOCK_DETERMINISTIC_PROVIDERS: CompanyProvider[] = [
 const MOCK_FALLBACK_PROVIDER = new FixtureCompanyProvider('ai_fallback', 0.6)
 
 export function getDeterministicCompanyProviders(): CompanyProvider[] {
-  return env.MERCLEX_MOCK_EXTERNAL_PROVIDERS
+  return env.COMPANY_INTELLIGENCE_MOCK_EXTERNAL_PROVIDERS
     ? MOCK_DETERMINISTIC_PROVIDERS
     : LIVE_DETERMINISTIC_PROVIDERS
 }
 
 export function getFallbackCompanyProvider(): CompanyProvider {
-  return env.MERCLEX_MOCK_EXTERNAL_PROVIDERS
+  return env.COMPANY_INTELLIGENCE_MOCK_EXTERNAL_PROVIDERS
     ? MOCK_FALLBACK_PROVIDER
     : LIVE_FALLBACK_PROVIDER
 }

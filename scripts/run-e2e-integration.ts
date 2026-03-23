@@ -33,7 +33,7 @@ async function main() {
     ...process.env,
     DATABASE_URL: target.integrationDatabaseUrl,
     NODE_ENV: "test",
-    MERCLEX_MOCK_EXTERNAL_PROVIDERS: "1",
+    COMPANY_INTELLIGENCE_MOCK_EXTERNAL_PROVIDERS: "1",
     OPENAI_API_KEY: process.env.OPENAI_API_KEY ?? "test-openai-key",
   };
 
@@ -95,7 +95,7 @@ function parseArgs(argv: string[]): ParsedArgs {
 }
 
 function createDatabaseName() {
-  return `merclex_e2e_${randomUUID().replace(/-/g, "").slice(0, 12)}`;
+  return `company_intelligence_e2e_${randomUUID().replace(/-/g, "").slice(0, 12)}`;
 }
 
 function buildDatabaseUrl(sourceDatabaseUrl: string, databaseName: string) {
@@ -139,14 +139,14 @@ async function prepareLocalDatabase(input: {
 }
 
 async function startDockerDatabase() {
-  const database = process.env.E2E_DOCKER_DB_NAME ?? "merclex_e2e";
+  const database = process.env.E2E_DOCKER_DB_NAME ?? "company_intelligence_e2e";
   const user = process.env.E2E_DOCKER_USER ?? "postgres";
   const password = process.env.E2E_DOCKER_PASSWORD ?? "postgres";
   const image = process.env.E2E_DOCKER_IMAGE ?? "postgres:16-alpine";
   const hostPort = process.env.E2E_DOCKER_PORT
     ? Number(process.env.E2E_DOCKER_PORT)
     : await getAvailablePort();
-  const containerName = `${process.env.E2E_DOCKER_CONTAINER_PREFIX ?? "merclex-e2e"}-${randomUUID().slice(0, 8)}`;
+  const containerName = `${process.env.E2E_DOCKER_CONTAINER_PREFIX ?? "company-intelligence-e2e"}-${randomUUID().slice(0, 8)}`;
   const integrationDatabaseUrl = buildPostgresUrl({
     user,
     password,

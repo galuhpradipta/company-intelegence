@@ -1,4 +1,4 @@
-# Merclex Company Intelligence
+# Company Intelligence
 
 A micro-app that resolves company identities, fetches news, and scores article relevancy using a multi-provider pipeline with deterministic confidence scoring and LLM-powered relevancy analysis.
 
@@ -6,8 +6,8 @@ A micro-app that resolves company identities, fetches news, and scores article r
 
 - Verified on March 24, 2026: `pnpm build` passes.
 - Verified on March 24, 2026: `pnpm test -- --run tests/unit server/routes/relevancy.test.ts` passes with `61` tests across `12` files.
-- Verified on March 24, 2026: `pnpm test:e2e` passes with `3` Merclex browser tests.
-- Active browser-test coverage under `e2e/merclex/` now covers the input smoke path, single-company resolve -> detail -> news, and CSV upload -> progress -> result actions.
+- Verified on March 24, 2026: `pnpm test:e2e` passes with `3` Company Intelligence browser tests.
+- Active browser-test coverage under `e2e/company-intelligence/` now covers the input smoke path, single-company resolve -> detail -> news, and CSV upload -> progress -> result actions.
 - A full integration Playwright path is available via `pnpm test:e2e:integration` and `pnpm test:e2e:integration:docker`; both use the real frontend/backend plus a real isolated PostgreSQL database, while mocking third-party providers inside the server.
 - Archived auth/notes template Playwright files live under `legacy/playwright-template/` and are not part of the trial submission.
 
@@ -57,7 +57,7 @@ pnpm test:e2e:ui
 
 ### Full integration UI tests
 
-These run the real frontend, real backend, and a real PostgreSQL database. External providers are mocked inside the backend so the UI still exercises the full Merclex stack without live third-party API calls.
+These run the real frontend, real backend, and a real PostgreSQL database. External providers are mocked inside the backend so the UI still exercises the full Company Intelligence stack without live third-party API calls.
 
 ```bash
 pnpm test:e2e:integration
@@ -84,7 +84,7 @@ pnpm test:e2e:integration:docker:ui
 The Docker mode uses:
 
 - `E2E_DOCKER_IMAGE` default `postgres:16-alpine`
-- `E2E_DOCKER_DB_NAME` default `merclex_e2e`
+- `E2E_DOCKER_DB_NAME` default `company_intelligence_e2e`
 - `E2E_DOCKER_USER` default `postgres`
 - `E2E_DOCKER_PASSWORD` default `postgres`
 - a running local Docker daemon (Docker Desktop, OrbStack, Colima, etc.)
@@ -99,8 +99,8 @@ E2E_USE_DOCKER=1
 Recommended local setup:
 
 ```env
-DATABASE_URL=postgresql://postgres:password@localhost:5432/merclex_intel
-E2E_DATABASE_URL=postgresql://postgres:password@localhost:5432/merclex_intel_e2e
+DATABASE_URL=postgresql://postgres:password@localhost:5432/company_intelligence
+E2E_DATABASE_URL=postgresql://postgres:password@localhost:5432/company_intelligence_e2e
 ```
 
 ## API Keys Setup
@@ -171,8 +171,8 @@ OPENCORPORATES_API_KEY=your_key_here
 ### Final `.env`
 
 ```env
-DATABASE_URL=postgresql://postgres:password@localhost:5432/merclex_intel
-E2E_DATABASE_URL=postgresql://postgres:password@localhost:5432/merclex_intel_e2e
+DATABASE_URL=postgresql://postgres:password@localhost:5432/company_intelligence
+E2E_DATABASE_URL=postgresql://postgres:password@localhost:5432/company_intelligence_e2e
 E2E_USE_DOCKER=0
 
 OPENAI_API_KEY=sk-...
@@ -191,7 +191,7 @@ BATCH_CONCURRENCY=5
 PROVIDER_TIMEOUT_MS=10000
 NEWS_LOOKBACK_DAYS=30
 LOG_LEVEL=info
-MERCLEX_MOCK_EXTERNAL_PROVIDERS=0
+COMPANY_INTELLIGENCE_MOCK_EXTERNAL_PROVIDERS=0
 ```
 
 ## Environment Variables
@@ -203,7 +203,7 @@ MERCLEX_MOCK_EXTERNAL_PROVIDERS=0
 | `E2E_DATABASE_ADMIN_URL` | Optional | Admin connection used to create/drop E2E databases when `DATABASE_URL` lacks the needed privilege |
 | `E2E_USE_DOCKER` | Optional | Default `false` — when set, `pnpm test:e2e:integration` uses a temporary Docker Postgres container |
 | `E2E_DOCKER_IMAGE` | Optional | Default `postgres:16-alpine` |
-| `E2E_DOCKER_DB_NAME` | Optional | Default `merclex_e2e` |
+| `E2E_DOCKER_DB_NAME` | Optional | Default `company_intelligence_e2e` |
 | `E2E_DOCKER_USER` | Optional | Default `postgres` |
 | `E2E_DOCKER_PASSWORD` | Optional | Default `postgres` |
 | `OPENAI_API_KEY` | Yes | OpenAI API key for relevancy scoring and AI fallback |
@@ -217,7 +217,7 @@ MERCLEX_MOCK_EXTERNAL_PROVIDERS=0
 | `BATCH_CONCURRENCY` | No | Default `5` — parallel rows in CSV batch |
 | `PROVIDER_TIMEOUT_MS` | No | Default `10000` — per-provider request timeout |
 | `NEWS_LOOKBACK_DAYS` | No | Default `30` — news lookback window |
-| `MERCLEX_MOCK_EXTERNAL_PROVIDERS` | No | Default `false` — enables the server-side fixture providers used by the integration E2E runner |
+| `COMPANY_INTELLIGENCE_MOCK_EXTERNAL_PROVIDERS` | No | Default `false` — enables the server-side fixture providers used by the integration E2E runner |
 
 ## Architecture
 
@@ -344,7 +344,7 @@ Articles below 30 are stored but hidden in the default view. Scoring runs with c
 
 ```bash
 pnpm test -- --run tests/unit   # 56 unit tests
-pnpm test:e2e                   # Merclex smoke test
+pnpm test:e2e                   # Company Intelligence smoke test
 ```
 
 Coverage priorities per spec:
@@ -355,7 +355,7 @@ Coverage priorities per spec:
 - `tests/unit/deduplicator.test.ts` — URL dedup, title fingerprint, 72-hour event window
 - `tests/unit/persistence-metadata.test.ts` — field-confidence and identifier extraction for persistence
 
-Browser coverage is intentionally narrow right now: the active Playwright suite only checks the Merclex input entry points. The older auth/notes browser tests were archived because they were template scaffolding, not part of this trial.
+Browser coverage is intentionally narrow right now: the active Playwright suite only checks the Company Intelligence input entry points. The older auth/notes browser tests were archived because they were template scaffolding, not part of this trial.
 
 ## Provider Access Notes
 

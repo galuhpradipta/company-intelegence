@@ -1,7 +1,7 @@
 import { defineConfig, devices } from "@playwright/test";
 
 export default defineConfig({
-  testDir: "./e2e/merclex",
+  testDir: "./e2e/company-intelligence",
   testIgnore: ["**/integration/**"],
   fullyParallel: false,
   forbidOnly: !!process.env.CI,

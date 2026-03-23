@@ -58,7 +58,7 @@ async function scoreOneArticle(
   article: { id: string; title: string; snippet?: string | null; fullText?: string | null },
   retryCount = 0
 ): Promise<ArticleScore | null> {
-  if (env.MERCLEX_MOCK_EXTERNAL_PROVIDERS) {
+  if (env.COMPANY_INTELLIGENCE_MOCK_EXTERNAL_PROVIDERS) {
     const mockScore = getMockArticleScore(article)
     return {
       articleId: article.id,

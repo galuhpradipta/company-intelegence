@@ -62,7 +62,7 @@ interface SecSubmission {
 }
 
 const SEC_HEADERS = {
-  'User-Agent': 'merclex-company-intelligence contact@merclex.com',
+  'User-Agent': 'company-intelligence contact@example.com',
   Accept: 'application/json',
 }
 

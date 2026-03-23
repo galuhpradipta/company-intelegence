@@ -1,6 +1,6 @@
 import { expect, test } from "@playwright/test";
 
-test("Merclex input view renders the core trial entry points", async ({ page }) => {
+test("Company Intelligence input view renders the core trial entry points", async ({ page }) => {
   await page.goto("/");
 
   await expect(page.getByRole("heading", { name: "Resolve Companies" })).toBeVisible();
