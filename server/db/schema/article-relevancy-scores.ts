@@ -1,4 +1,4 @@
-import { pgTable, uuid, text, integer, real, jsonb, timestamp } from 'drizzle-orm/pg-core'
+import { pgTable, uuid, text, integer, jsonb, timestamp } from 'drizzle-orm/pg-core'
 import { companies } from './companies.js'
 import { newsArticles } from './news-articles.js'
 

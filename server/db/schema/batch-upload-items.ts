@@ -1,4 +1,4 @@
-import { pgTable, uuid, text, integer, real, timestamp } from 'drizzle-orm/pg-core'
+import { pgTable, uuid, text, integer, real } from 'drizzle-orm/pg-core'
 import { batchUploads } from './batch-uploads.js'
 import { resolutionInputs } from './resolution-inputs.js'
 import { companies } from './companies.js'
