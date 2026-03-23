@@ -1,14 +1,20 @@
 import { db } from '../../db/client.js'
 import { newsArticles, companyArticles, companies } from '../../db/schema/index.js'
-import { eq } from 'drizzle-orm'
+import { eq, inArray } from 'drizzle-orm'
 import { getNewsProviders } from '../../providers/news/registry.js'
 import { deduplicateArticles, computeUrlHash, computeDedupeFingerprint } from './deduplicator.js'
 import { env } from '../../env.js'
 
 export async function fetchNewsForCompany(companyId: string): Promise<{ articlesIngested: number }> {
-  const company = await db.query.companies.findFirst({
-    where: eq(companies.id, companyId),
-  })
+  const [company] = await db
+    .select({
+      id: companies.id,
+      displayName: companies.displayName,
+    })
+    .from(companies)
+    .where(eq(companies.id, companyId))
+    .limit(1)
+
   if (!company) throw new Error(`Company ${companyId} not found`)
 
   const toDate = new Date()
@@ -31,53 +37,73 @@ export async function fetchNewsForCompany(companyId: string): Promise<{ articles
   ).flat()
 
   const deduped = deduplicateArticles(allArticles)
-
-  let ingested = 0
-
-  for (const article of deduped) {
-    const urlHash = computeUrlHash(article.url)
-    const fingerprint = computeDedupeFingerprint(article.title)
-
-    // Upsert the article
-    const [inserted] = await db
-      .insert(newsArticles)
-      .values({
-        canonicalUrl: article.url,
-        urlHash,
-        title: article.title,
-        sourceName: article.sourceName,
-        publishedAt: article.publishedAt,
-        snippet: article.snippet,
-        fullText: article.fullText,
-        dedupeFingerprint: fingerprint,
-        rawPayload: article.rawPayload,
-      })
-      .onConflictDoNothing()
-      .returning({ id: newsArticles.id })
-
-    let articleId: string
-    if (!inserted) {
-      // Article already exists, find it by urlHash
-      const existing = await db.query.newsArticles.findFirst({
-        where: eq(newsArticles.urlHash, urlHash),
-      })
-      if (!existing) continue
-      articleId = existing.id
-    } else {
-      articleId = inserted.id
-      ingested++
-    }
-
-    // Link to company (ignore if already linked)
-    await db
-      .insert(companyArticles)
-      .values({
-        companyId,
-        articleId,
-        searchQuery,
-      })
-      .onConflictDoNothing()
+  if (deduped.length === 0) {
+    return { articlesIngested: 0 }
   }
 
-  return { articlesIngested: ingested }
+  const preparedArticles = deduped.map((article) => ({
+    article,
+    urlHash: computeUrlHash(article.url),
+    fingerprint: computeDedupeFingerprint(article.title),
+  }))
+
+  const existingArticles = await db
+    .select({
+      id: newsArticles.id,
+      urlHash: newsArticles.urlHash,
+    })
+    .from(newsArticles)
+    .where(inArray(newsArticles.urlHash, preparedArticles.map((item) => item.urlHash)))
+
+  const articleIdByUrlHash = new Map(existingArticles.map((row) => [row.urlHash, row.id]))
+
+  const missingArticles = preparedArticles.filter((item) => !articleIdByUrlHash.has(item.urlHash))
+
+  if (missingArticles.length > 0) {
+    const insertedArticles = await db
+      .insert(newsArticles)
+      .values(
+        missingArticles.map(({ article, urlHash, fingerprint }) => ({
+          canonicalUrl: article.url,
+          urlHash,
+          title: article.title,
+          sourceName: article.sourceName,
+          publishedAt: article.publishedAt,
+          snippet: article.snippet,
+          fullText: article.fullText,
+          dedupeFingerprint: fingerprint,
+          rawPayload: article.rawPayload,
+        })),
+      )
+      .returning({
+        id: newsArticles.id,
+        urlHash: newsArticles.urlHash,
+      })
+
+    for (const inserted of insertedArticles) {
+      articleIdByUrlHash.set(inserted.urlHash, inserted.id)
+    }
+  }
+
+  const companyArticleValues = preparedArticles.flatMap(({ urlHash }) => {
+    const articleId = articleIdByUrlHash.get(urlHash)
+    if (!articleId) return []
+
+    return [{
+      companyId,
+      articleId,
+      searchQuery,
+    }]
+  })
+
+  if (companyArticleValues.length > 0) {
+    await db
+      .insert(companyArticles)
+      .values(companyArticleValues)
+      .onConflictDoNothing({
+        target: [companyArticles.companyId, companyArticles.articleId],
+      })
+  }
+
+  return { articlesIngested: missingArticles.length }
 }

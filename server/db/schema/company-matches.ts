@@ -1,4 +1,4 @@
-import { pgTable, uuid, integer, real, jsonb, boolean } from 'drizzle-orm/pg-core'
+import { pgTable, uuid, integer, real, jsonb, boolean, index, uniqueIndex } from 'drizzle-orm/pg-core'
 import { resolutionInputs } from './resolution-inputs.js'
 import { companies } from './companies.js'
 
@@ -10,4 +10,7 @@ export const companyMatches = pgTable('company_matches', {
   score: real('score').notNull(),
   scoreBreakdown: jsonb('score_breakdown').notNull().default({}),
   selected: boolean('selected').notNull().default(false),
-})
+}, (table) => [
+  uniqueIndex('company_matches_resolution_company_unique').on(table.resolutionInputId, table.companyId),
+  index('company_matches_resolution_input_id_idx').on(table.resolutionInputId),
+])

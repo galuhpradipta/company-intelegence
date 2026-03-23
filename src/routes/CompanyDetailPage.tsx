@@ -1,8 +1,9 @@
 import { useParams, Link } from 'react-router'
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useRef } from 'react'
 import { trpc } from '../lib/trpc.js'
 import { TierBadge } from '../components/ui/TierBadge.js'
 import { Spinner } from '../components/ui/Spinner.js'
+import { shouldAutoRefreshCompanyNews } from '../features/news/refreshPolicy.js'
 
 type CompanyData = Awaited<ReturnType<typeof trpc.company.getById.query>>
 type NewsData = Awaited<ReturnType<typeof trpc.news.listByCompany.query>>
@@ -16,6 +17,7 @@ const NEWS_STEPS = [
 
 export function CompanyDetailPage() {
   const { companyId } = useParams<{ companyId: string }>()
+  const hasLoadedInitialNews = useRef(false)
   const [company, setCompany] = useState<CompanyData | null>(null)
   const [newsData, setNewsData] = useState<NewsData | null>(null)
   const [showAll, setShowAll] = useState(false)
@@ -50,15 +52,10 @@ export function CompanyDetailPage() {
   async function triggerNewsFetch(id: string) {
     setFetchingNews(true)
     try {
-      await trpc.news.fetchForCompany.mutate(id)
+      await trpc.news.refreshForCompany.mutate(id)
     } catch (err) {
       console.warn('News fetch failed:', err)
       return
-    }
-    try {
-      await trpc.relevancy.scoreForCompany.mutate(id)
-    } catch (err) {
-      console.warn('Relevancy scoring failed:', err)
     }
     try {
       await loadNews(id, showAll)
@@ -71,21 +68,40 @@ export function CompanyDetailPage() {
 
   useEffect(() => {
     if (!companyId) return
+    let cancelled = false
+    hasLoadedInitialNews.current = false
+
     async function loadCompany(id: string) {
       setLoading(true)
+      setError(null)
       try {
-        const c = await trpc.company.getById.query(id)
+        const [c, existingNews] = await Promise.all([
+          trpc.company.getById.query(id),
+          trpc.news.listByCompany.query({ companyId: id, showAll: false }),
+        ])
+
+        if (cancelled) return
+
         setCompany(c)
-        if (c.matchTier === 'confident') {
-          triggerNewsFetch(id)
+        setNewsData(existingNews)
+        hasLoadedInitialNews.current = true
+
+        if (c.matchTier === 'confident' && shouldAutoRefreshCompanyNews(existingNews.meta)) {
+          void triggerNewsFetch(id)
         }
       } catch (err) {
+        if (cancelled) return
         setError(err instanceof Error ? err.message : 'Failed to load')
       } finally {
-        setLoading(false)
+        if (!cancelled) {
+          setLoading(false)
+        }
       }
     }
-    loadCompany(companyId)
+    void loadCompany(companyId)
+    return () => {
+      cancelled = true
+    }
   }, [companyId]) // eslint-disable-line react-hooks/exhaustive-deps
 
   useEffect(() => {

@@ -1,5 +1,5 @@
 import pLimit from 'p-limit'
-import { eq } from 'drizzle-orm'
+import { asc, eq } from 'drizzle-orm'
 import { db } from '../../db/client.js'
 import {
   resolutionInputs,
@@ -14,7 +14,7 @@ import {
   getDeterministicCompanyProviders,
   getFallbackCompanyProvider,
 } from '../../providers/company/registry.js'
-import { normalizeInput } from './normalizer.js'
+import { normalizeDomain, normalizeInput } from './normalizer.js'
 import { scoreCandidate, toMatchTier } from './scorer.js'
 import { clusterCandidates } from './merger.js'
 import { buildFieldConfidence, extractIdentifiers } from './persistence-metadata.js'
@@ -119,87 +119,127 @@ export async function resolveCompany(
   for (let i = 0; i < top.length; i++) {
     const { candidate, breakdown } = top[i]
     const tier = toMatchTier(breakdown.finalScore)
+    const normalizedDomain = candidate.domain ? normalizeDomain(candidate.domain) : null
+    const companyValues = {
+      displayName: candidate.displayName,
+      legalName: candidate.legalName,
+      domain: normalizedDomain,
+      industry: candidate.industry,
+      employeeCount: candidate.employeeCount,
+      hqCity: candidate.hqCity,
+      hqState: candidate.hqState,
+      hqCountry: candidate.hqCountry ?? 'US',
+      matchTier: tier,
+      confidenceScore: breakdown.finalScore,
+    }
 
-    // Upsert company record
-    const [company] = await db
-      .insert(companies)
-      .values({
-        displayName: candidate.displayName,
-        legalName: candidate.legalName,
-        domain: candidate.domain,
-        industry: candidate.industry,
-        employeeCount: candidate.employeeCount,
-        hqCity: candidate.hqCity,
-        hqState: candidate.hqState,
-        hqCountry: candidate.hqCountry ?? 'US',
-        matchTier: tier,
-        confidenceScore: breakdown.finalScore,
-      })
-      .onConflictDoNothing()
-      .returning({ id: companies.id })
-
-    // If conflict (domain-based dedup), query existing
     let companyId: string
-    if (!company) {
-      // This shouldn't happen often; fallback to new insert without conflict
-      const [existing] = await db
-        .insert(companies)
-        .values({
-          displayName: candidate.displayName,
-          legalName: candidate.legalName,
-          domain: candidate.domain,
-          industry: candidate.industry,
-          employeeCount: candidate.employeeCount,
-          hqCity: candidate.hqCity,
-          hqState: candidate.hqState,
-          hqCountry: candidate.hqCountry ?? 'US',
-          matchTier: tier,
-          confidenceScore: breakdown.finalScore,
+
+    if (normalizedDomain) {
+      const [existingCompany] = await db
+        .select({
+          id: companies.id,
+          legalName: companies.legalName,
+          industry: companies.industry,
+          employeeCount: companies.employeeCount,
+          hqCity: companies.hqCity,
+          hqState: companies.hqState,
+          hqCountry: companies.hqCountry,
         })
-        .returning({ id: companies.id })
-      companyId = existing.id
+        .from(companies)
+        .where(eq(companies.domain, normalizedDomain))
+        .orderBy(asc(companies.createdAt))
+        .limit(1)
+
+      if (existingCompany) {
+        await db
+          .update(companies)
+          .set({
+            displayName: candidate.displayName,
+            legalName: candidate.legalName ?? existingCompany.legalName,
+            domain: normalizedDomain,
+            industry: candidate.industry ?? existingCompany.industry,
+            employeeCount: candidate.employeeCount ?? existingCompany.employeeCount,
+            hqCity: candidate.hqCity ?? existingCompany.hqCity,
+            hqState: candidate.hqState ?? existingCompany.hqState,
+            hqCountry: candidate.hqCountry ?? existingCompany.hqCountry ?? 'US',
+            matchTier: tier,
+            confidenceScore: breakdown.finalScore,
+            updatedAt: new Date(),
+          })
+          .where(eq(companies.id, existingCompany.id))
+
+        companyId = existingCompany.id
+      } else {
+        const [company] = await db
+          .insert(companies)
+          .values(companyValues)
+          .returning({ id: companies.id })
+
+        companyId = company.id
+      }
     } else {
+      const [company] = await db
+        .insert(companies)
+        .values(companyValues)
+        .returning({ id: companies.id })
+
       companyId = company.id
     }
 
     // Persist source records
-    for (const source of candidate.sources) {
-      const provider = getCompanyProviderByName(source.providerName)
-      await db.insert(companySourceRecords).values({
-        companyId,
-        provider: source.providerName,
-        providerRecordId: source.providerRecordId,
-        rawPayload: source.rawPayload,
-        fieldConfidence: buildFieldConfidence(source, provider?.reliabilityFactor ?? 0.6),
-      })
+    if (candidate.sources.length > 0) {
+      await db
+        .insert(companySourceRecords)
+        .values(candidate.sources.map((source) => {
+          const provider = getCompanyProviderByName(source.providerName)
+
+          return {
+            companyId,
+            provider: source.providerName,
+            providerRecordId: source.providerRecordId,
+            rawPayload: source.rawPayload,
+            fieldConfidence: buildFieldConfidence(source, provider?.reliabilityFactor ?? 0.6),
+          }
+        }))
+        .onConflictDoNothing({
+          target: [
+            companySourceRecords.companyId,
+            companySourceRecords.provider,
+            companySourceRecords.providerRecordId,
+          ],
+        })
     }
 
-    const existingIdentifiers = await db.query.companyIdentifiers.findMany({
-      where: eq(companyIdentifiers.companyId, companyId),
-    })
-    const existingKeys = new Set(
-      existingIdentifiers.map((identifier) =>
-        `${identifier.identifierType}:${identifier.identifierValue}:${identifier.source}`
-      ),
-    )
     const identifiersToInsert = candidate.sources
       .flatMap(extractIdentifiers)
-      .filter((identifier) => {
-        const key = `${identifier.identifierType}:${identifier.identifierValue}:${identifier.source}`
-        if (existingKeys.has(key)) return false
-        existingKeys.add(key)
-        return true
-      })
+      .filter((identifier, index, identifiers) =>
+        identifiers.findIndex((candidateIdentifier) =>
+          candidateIdentifier.identifierType === identifier.identifierType
+          && candidateIdentifier.identifierValue === identifier.identifierValue
+          && candidateIdentifier.source === identifier.source
+        ) === index,
+      )
 
     if (identifiersToInsert.length > 0) {
-      await db.insert(companyIdentifiers).values(
-        identifiersToInsert.map((identifier) => ({
-          companyId,
-          identifierType: identifier.identifierType,
-          identifierValue: identifier.identifierValue,
-          source: identifier.source,
-        })),
-      )
+      await db
+        .insert(companyIdentifiers)
+        .values(
+          identifiersToInsert.map((identifier) => ({
+            companyId,
+            identifierType: identifier.identifierType,
+            identifierValue: identifier.identifierValue,
+            source: identifier.source,
+          })),
+        )
+        .onConflictDoNothing({
+          target: [
+            companyIdentifiers.companyId,
+            companyIdentifiers.identifierType,
+            companyIdentifiers.identifierValue,
+            companyIdentifiers.source,
+          ],
+        })
     }
 
     // Persist company match record

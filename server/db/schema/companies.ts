@@ -1,4 +1,4 @@
-import { pgTable, uuid, text, integer, real, timestamp } from 'drizzle-orm/pg-core'
+import { pgTable, uuid, text, integer, real, timestamp, index } from 'drizzle-orm/pg-core'
 
 export const companies = pgTable('companies', {
   id: uuid('id').primaryKey().defaultRandom(),
@@ -14,4 +14,6 @@ export const companies = pgTable('companies', {
   confidenceScore: real('confidence_score').notNull().default(0),
   createdAt: timestamp('created_at', { withTimezone: true }).notNull().defaultNow(),
   updatedAt: timestamp('updated_at', { withTimezone: true }).notNull().defaultNow(),
-})
+}, (table) => [
+  index('companies_domain_idx').on(table.domain),
+])

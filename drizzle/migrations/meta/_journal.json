@@ -8,6 +8,13 @@
       "when": 1774283749957,
       "tag": "0000_naive_corsair",
       "breakpoints": true
+    },
+    {
+      "idx": 1,
+      "version": "7",
+      "when": 1774283750957,
+      "tag": "0002_efficiency_indexes",
+      "breakpoints": true
     }
   ]
 }

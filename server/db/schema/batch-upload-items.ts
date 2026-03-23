@@ -1,4 +1,4 @@
-import { pgTable, uuid, text, integer, real } from 'drizzle-orm/pg-core'
+import { pgTable, uuid, text, integer, real, index, uniqueIndex } from 'drizzle-orm/pg-core'
 import { batchUploads } from './batch-uploads.js'
 import { resolutionInputs } from './resolution-inputs.js'
 import { companies } from './companies.js'
@@ -12,4 +12,7 @@ export const batchUploadItems = pgTable('batch_upload_items', {
   resultCompanyId: uuid('result_company_id').references(() => companies.id),
   topScore: real('top_score'),
   errorMessage: text('error_message'),
-})
+}, (table) => [
+  uniqueIndex('batch_upload_items_batch_row_unique').on(table.batchUploadId, table.rowNumber),
+  index('batch_upload_items_batch_id_idx').on(table.batchUploadId),
+])

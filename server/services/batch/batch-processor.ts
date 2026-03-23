@@ -4,8 +4,7 @@ import { batchUploads, batchUploadItems } from '../../db/schema/index.js'
 import { eq, sql } from 'drizzle-orm'
 import type { CsvRow } from './csv-parser.js'
 import { resolveCompany } from '../company-resolution/index.js'
-import { fetchNewsForCompany } from '../news-ingestion/index.js'
-import { scoreArticlesForCompany } from '../relevancy/index.js'
+import { refreshCompanyNews } from '../news-ingestion/index.js'
 import { env } from '../../env.js'
 
 export async function createBatch(filename: string, rows: CsvRow[]): Promise<string> {
@@ -76,11 +75,9 @@ export async function processBatch(batchId: string, rows: CsvRow[]): Promise<voi
 
           // For confident matches, trigger news + scoring in background
           if (topCandidate?.matchTier === 'confident') {
-            fetchNewsForCompany(topCandidate.companyId)
-              .then(() => scoreArticlesForCompany(topCandidate.companyId))
-              .catch((err) =>
-                console.warn(`[Batch] News/scoring failed for ${topCandidate.companyId}:`, err)
-              )
+            refreshCompanyNews(topCandidate.companyId).catch((err) =>
+              console.warn(`[Batch] News/scoring failed for ${topCandidate.companyId}:`, err)
+            )
           }
 
           await db

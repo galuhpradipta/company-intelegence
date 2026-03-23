@@ -3,7 +3,7 @@ import pLimit from 'p-limit'
 import { z } from 'zod'
 import { db } from '../../db/client.js'
 import { articleRelevancyScores, companyArticles, newsArticles, companies } from '../../db/schema/index.js'
-import { eq } from 'drizzle-orm'
+import { and, eq } from 'drizzle-orm'
 import { env } from '../../env.js'
 import { getMockArticleScore } from '../../testing/mock-fixtures.js'
 
@@ -159,34 +159,75 @@ export async function scoreArticleBatchForProfile(
 }
 
 export async function scoreArticlesForCompany(companyId: string): Promise<ArticleScore[]> {
-  const company = await db.query.companies.findFirst({
-    where: eq(companies.id, companyId),
-  })
+  const [company] = await db
+    .select({
+      id: companies.id,
+      displayName: companies.displayName,
+      legalName: companies.legalName,
+      industry: companies.industry,
+      employeeCount: companies.employeeCount,
+      hqCity: companies.hqCity,
+      hqCountry: companies.hqCountry,
+    })
+    .from(companies)
+    .where(eq(companies.id, companyId))
+    .limit(1)
+
   if (!company) throw new Error(`Company ${companyId} not found`)
 
-  // Get all articles linked to this company that haven't been scored yet
-  const links = await db.query.companyArticles.findMany({
-    where: eq(companyArticles.companyId, companyId),
-  })
-
-  const articleIds = links.map((l) => l.articleId)
-  if (articleIds.length === 0) return []
-
-  // Find articles not yet scored for this company
-  const alreadyScored = await db.query.articleRelevancyScores.findMany({
-    where: eq(articleRelevancyScores.companyId, companyId),
-  })
-  const scoredIds = new Set(alreadyScored.map((s) => s.articleId))
-
-  const toScore = articleIds.filter((id) => !scoredIds.has(id))
-  if (toScore.length === 0) return []
-
-  const articles = await Promise.all(
-    toScore.map((id) =>
-      db.query.newsArticles.findFirst({ where: eq(newsArticles.id, id) })
+  const rows = await db
+    .select({
+      articleId: newsArticles.id,
+      title: newsArticles.title,
+      snippet: newsArticles.snippet,
+      fullText: newsArticles.fullText,
+      scoreStatus: articleRelevancyScores.status,
+    })
+    .from(companyArticles)
+    .innerJoin(newsArticles, eq(companyArticles.articleId, newsArticles.id))
+    .leftJoin(
+      articleRelevancyScores,
+      and(
+        eq(articleRelevancyScores.companyId, companyId),
+        eq(articleRelevancyScores.articleId, companyArticles.articleId),
+      ),
     )
+    .where(eq(companyArticles.companyId, companyId))
+
+  if (rows.length === 0) return []
+
+  const articlesById = new Map<string, {
+    id: string
+    title: string
+    snippet: string | null
+    fullText: string | null
+    scoreStatus: string | null
+  }>()
+
+  for (const row of rows) {
+    const existing = articlesById.get(row.articleId)
+
+    if (!existing) {
+      articlesById.set(row.articleId, {
+        id: row.articleId,
+        title: row.title,
+        snippet: row.snippet,
+        fullText: row.fullText,
+        scoreStatus: row.scoreStatus,
+      })
+      continue
+    }
+
+    if (getScoreStatusPriority(row.scoreStatus) > getScoreStatusPriority(existing.scoreStatus)) {
+      existing.scoreStatus = row.scoreStatus
+    }
+  }
+
+  const validArticles = [...articlesById.values()].filter(
+    (article) => article.scoreStatus !== 'scored',
   )
-  const validArticles = articles.filter(Boolean) as NonNullable<typeof articles[number]>[]
+
+  if (validArticles.length === 0) return []
 
   const limit = pLimit(CONCURRENCY)
   const results = await Promise.all(
@@ -195,28 +236,56 @@ export async function scoreArticlesForCompany(companyId: string): Promise<Articl
         const score = await scoreOneArticle(company, article)
         if (!score) {
           // Persist failed score
-          await db.insert(articleRelevancyScores).values({
-            companyId,
-            articleId: article.id,
-            model: env.OPENAI_MODEL,
-            promptVersion: PROMPT_VERSION,
-            status: 'failed',
-          })
+          await db
+            .insert(articleRelevancyScores)
+            .values({
+              companyId,
+              articleId: article.id,
+              model: env.OPENAI_MODEL,
+              promptVersion: PROMPT_VERSION,
+              status: 'failed',
+            })
+            .onConflictDoUpdate({
+              target: [articleRelevancyScores.companyId, articleRelevancyScores.articleId],
+              set: {
+                model: env.OPENAI_MODEL,
+                promptVersion: PROMPT_VERSION,
+                status: 'failed',
+                relevancyScore: null,
+                category: null,
+                explanation: null,
+                scoredAt: null,
+              },
+            })
           return null
         }
 
         // Persist scored result
-        await db.insert(articleRelevancyScores).values({
-          companyId,
-          articleId: article.id,
-          model: env.OPENAI_MODEL,
-          promptVersion: PROMPT_VERSION,
-          relevancyScore: score.relevancyScore,
-          category: score.category,
-          explanation: score.explanation,
-          status: 'scored',
-          scoredAt: new Date(),
-        })
+        await db
+          .insert(articleRelevancyScores)
+          .values({
+            companyId,
+            articleId: article.id,
+            model: env.OPENAI_MODEL,
+            promptVersion: PROMPT_VERSION,
+            relevancyScore: score.relevancyScore,
+            category: score.category,
+            explanation: score.explanation,
+            status: 'scored',
+            scoredAt: new Date(),
+          })
+          .onConflictDoUpdate({
+            target: [articleRelevancyScores.companyId, articleRelevancyScores.articleId],
+            set: {
+              model: env.OPENAI_MODEL,
+              promptVersion: PROMPT_VERSION,
+              relevancyScore: score.relevancyScore,
+              category: score.category,
+              explanation: score.explanation,
+              status: 'scored',
+              scoredAt: new Date(),
+            },
+          })
 
         return score
       })
@@ -224,4 +293,10 @@ export async function scoreArticlesForCompany(companyId: string): Promise<Articl
   )
 
   return results.filter(Boolean) as ArticleScore[]
+}
+
+function getScoreStatusPriority(status: string | null): number {
+  if (status === 'scored') return 2
+  if (status === 'failed') return 1
+  return 0
 }
