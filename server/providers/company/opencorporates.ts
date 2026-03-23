@@ -50,6 +50,13 @@ export class OpenCorporatesProvider implements CompanyProvider {
           hqCity: address?.locality as string | undefined,
           hqState: address?.region as string | undefined,
           hqCountry: address?.country as string | undefined,
+          identifiers: r.company_number
+            ? [{
+              identifierType: 'company_number',
+              identifierValue: r.company_number as string,
+              source: this.name,
+            }]
+            : undefined,
           rawPayload: r,
         }
       })

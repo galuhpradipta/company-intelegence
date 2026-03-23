@@ -160,6 +160,24 @@ function scoreTickerEntry(entry: SecTickerEntry, input: NormalizedInput): number
 }
 
 function toCandidate(submission: SecSubmission, entry: SecTickerEntry): CandidateCompany {
+  const identifiers = [
+    {
+      identifierType: 'cik',
+      identifierValue: submission.cik,
+      source: 'sec_edgar',
+    },
+    {
+      identifierType: 'ticker',
+      identifierValue: entry.ticker,
+      source: 'sec_edgar',
+    },
+    ...(submission.tickers ?? []).map((ticker) => ({
+      identifierType: 'ticker',
+      identifierValue: ticker,
+      source: 'sec_edgar',
+    })),
+  ]
+
   return {
     providerName: 'sec_edgar',
     providerRecordId: submission.cik,
@@ -171,9 +189,11 @@ function toCandidate(submission: SecSubmission, entry: SecTickerEntry): Candidat
     hqState: submission.addresses?.business?.stateOrCountry ?? undefined,
     hqCountry: 'US',
     aliases: submission.formerNames?.map((item) => item.name).filter((value): value is string => Boolean(value)),
+    identifiers,
     rawPayload: {
       cik: submission.cik,
       ticker: entry.ticker,
+      tickers: submission.tickers,
       title: entry.title,
       sicDescription: submission.sicDescription,
       addresses: submission.addresses,

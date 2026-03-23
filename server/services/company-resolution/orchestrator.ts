@@ -1,20 +1,23 @@
 import pLimit from 'p-limit'
+import { eq } from 'drizzle-orm'
 import { db } from '../../db/client.js'
-import { resolutionInputs, companies, companySourceRecords, companyMatches } from '../../db/schema/index.js'
-import type { CompanyInput, CompanyProvider } from '../../providers/company/types.js'
+import {
+  resolutionInputs,
+  companies,
+  companyIdentifiers,
+  companySourceRecords,
+  companyMatches,
+} from '../../db/schema/index.js'
+import type { CompanyInput } from '../../providers/company/types.js'
+import {
+  getCompanyProviderByName,
+  getDeterministicCompanyProviders,
+  getFallbackCompanyProvider,
+} from '../../providers/company/registry.js'
 import { normalizeInput } from './normalizer.js'
 import { scoreCandidate, toMatchTier } from './scorer.js'
 import { clusterCandidates } from './merger.js'
-import { PeopleDataLabsProvider } from '../../providers/company/people-data-labs.js'
-import { SecEdgarProvider } from '../../providers/company/sec-edgar.js'
-import { AiFallbackProvider } from '../../providers/company/ai-fallback.js'
-
-const PROVIDERS: CompanyProvider[] = [
-  new PeopleDataLabsProvider(),
-  new SecEdgarProvider(),
-]
-
-const AI_FALLBACK = new AiFallbackProvider()
+import { buildFieldConfidence, extractIdentifiers } from './persistence-metadata.js'
 
 export interface ResolvedCandidate {
   companyId: string
@@ -39,6 +42,8 @@ export async function resolveCompany(
   sourceType: 'single' | 'csv' = 'single'
 ): Promise<ResolveResult> {
   const normalized = normalizeInput(input)
+  const providers = getDeterministicCompanyProviders()
+  const fallbackProvider = getFallbackCompanyProvider()
 
   // Persist the resolution input
   const [inputRecord] = await db
@@ -54,7 +59,7 @@ export async function resolveCompany(
   // Run providers in parallel with concurrency limit
   const limit = pLimit(3)
   const providerResults = await Promise.all(
-    PROVIDERS.map((provider) =>
+    providers.map((provider) =>
       limit(() =>
         provider.search(normalized).catch((err) => {
           console.warn(`[${provider.name}] Search failed:`, err)
@@ -69,7 +74,7 @@ export async function resolveCompany(
   // Use AI fallback if no results from deterministic providers
   if (allCandidates.length === 0) {
     console.log('[Orchestrator] No deterministic results, trying AI fallback')
-    allCandidates = await AI_FALLBACK.search(normalized).catch(() => [])
+    allCandidates = await fallbackProvider.search(normalized).catch(() => [])
   }
 
   // Cluster and merge candidates
@@ -80,7 +85,7 @@ export async function resolveCompany(
     // Use the best (highest) reliability factor from contributing sources
     const maxReliability = Math.max(
       ...candidate.sources.map((s) => {
-        const provider = [...PROVIDERS, AI_FALLBACK].find((p) => p.name === s.providerName)
+        const provider = getCompanyProviderByName(s.providerName)
         return provider?.reliabilityFactor ?? 0.6
       })
     )
@@ -159,13 +164,42 @@ export async function resolveCompany(
 
     // Persist source records
     for (const source of candidate.sources) {
+      const provider = getCompanyProviderByName(source.providerName)
       await db.insert(companySourceRecords).values({
         companyId,
         provider: source.providerName,
         providerRecordId: source.providerRecordId,
         rawPayload: source.rawPayload,
-        fieldConfidence: {},
+        fieldConfidence: buildFieldConfidence(source, provider?.reliabilityFactor ?? 0.6),
       })
+    }
+
+    const existingIdentifiers = await db.query.companyIdentifiers.findMany({
+      where: eq(companyIdentifiers.companyId, companyId),
+    })
+    const existingKeys = new Set(
+      existingIdentifiers.map((identifier) =>
+        `${identifier.identifierType}:${identifier.identifierValue}:${identifier.source}`
+      ),
+    )
+    const identifiersToInsert = candidate.sources
+      .flatMap(extractIdentifiers)
+      .filter((identifier) => {
+        const key = `${identifier.identifierType}:${identifier.identifierValue}:${identifier.source}`
+        if (existingKeys.has(key)) return false
+        existingKeys.add(key)
+        return true
+      })
+
+    if (identifiersToInsert.length > 0) {
+      await db.insert(companyIdentifiers).values(
+        identifiersToInsert.map((identifier) => ({
+          companyId,
+          identifierType: identifier.identifierType,
+          identifierValue: identifier.identifierValue,
+          source: identifier.source,
+        })),
+      )
     }
 
     // Persist company match record
@@ -205,6 +239,3 @@ export async function resolveCompany(
     candidates: resolvedCandidates,
   }
 }
-
-// Need to import eq
-import { eq } from 'drizzle-orm'

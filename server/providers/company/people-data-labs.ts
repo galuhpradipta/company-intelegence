@@ -55,6 +55,13 @@ export class PeopleDataLabsProvider implements CompanyProvider {
       hqCity: (data.location as Record<string, string> | undefined)?.locality,
       hqState: (data.location as Record<string, string> | undefined)?.region,
       hqCountry: (data.location as Record<string, string> | undefined)?.country,
+      identifiers: data.id
+        ? [{
+          identifierType: 'people_data_labs_id',
+          identifierValue: data.id as string,
+          source: this.name,
+        }]
+        : undefined,
       rawPayload: data,
     }]
   }

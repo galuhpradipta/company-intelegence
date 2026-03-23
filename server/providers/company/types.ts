@@ -20,6 +20,12 @@ export interface NormalizedInput {
   addressParts?: string[]
 }
 
+export interface CandidateIdentifier {
+  identifierType: string
+  identifierValue: string
+  source: string
+}
+
 export interface CandidateCompany {
   providerName: string
   providerRecordId?: string
@@ -32,6 +38,7 @@ export interface CandidateCompany {
   hqState?: string
   hqCountry?: string
   aliases?: string[]
+  identifiers?: CandidateIdentifier[]
   rawPayload: Record<string, unknown>
 }
 
