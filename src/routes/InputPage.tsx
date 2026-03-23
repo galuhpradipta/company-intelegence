@@ -35,30 +35,34 @@ export function InputPage() {
   return (
     <div className="max-w-2xl mx-auto">
       <div className="mb-8">
-        <h1 className="text-2xl font-bold text-gray-900 mb-2">Resolve Companies</h1>
-        <p className="text-gray-500 text-sm">
+        <h1 className="font-display text-2xl font-medium text-app-text mb-2 tracking-tight">Resolve Companies</h1>
+        <p className="text-app-text-muted text-sm leading-relaxed">
           Enter a company to resolve it against external data sources, fetch news, and score relevancy.
         </p>
       </div>
 
       {/* Tab toggle */}
-      <div className="flex bg-gray-100 rounded-lg p-1 mb-6 w-fit">
+      <div role="tablist" aria-label="Input mode" className="flex bg-stone-100 rounded-lg p-1 mb-6 w-fit">
         <button
+          role="tab"
+          aria-selected={tab === 'single'}
           onClick={() => updateTab('single')}
           className={`px-4 py-2 rounded-md text-sm font-medium transition-colors ${
             tab === 'single'
-              ? 'bg-white text-gray-900 shadow-sm'
-              : 'text-gray-500 hover:text-gray-700'
+              ? 'bg-white text-stone-900 shadow-sm'
+              : 'text-stone-500 hover:text-stone-700'
           }`}
         >
           Single Company
         </button>
         <button
+          role="tab"
+          aria-selected={tab === 'csv'}
           onClick={() => updateTab('csv')}
           className={`px-4 py-2 rounded-md text-sm font-medium transition-colors ${
             tab === 'csv'
-              ? 'bg-white text-gray-900 shadow-sm'
-              : 'text-gray-500 hover:text-gray-700'
+              ? 'bg-white text-stone-900 shadow-sm'
+              : 'text-stone-500 hover:text-stone-700'
           }`}
         >
           CSV Upload

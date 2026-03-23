@@ -1,3 +1,4 @@
+import { readFileSync } from 'node:fs'
 import { describe, it, expect } from 'vitest'
 import { parseCsv } from '../../server/services/batch/csv-parser.js'
 
@@ -85,5 +86,16 @@ Apple,apple.com,some_value`
     const result = parseCsv(toBuffer(csv))
     expect(result.rows).toHaveLength(1)
     expect(result.rows[0].company_name).toBe('Apple')
+  })
+
+  it('keeps the manual invalid fixture invalid', () => {
+    const csv = readFileSync(new URL('../../manual-test-data/companies-invalid.csv', import.meta.url))
+    const result = parseCsv(csv)
+
+    expect(result.totalRows).toBe(3)
+    expect(result.rows).toHaveLength(2)
+    expect(result.errors).toEqual([
+      { row: 3, message: 'Missing required field: company_name' },
+    ])
   })
 })

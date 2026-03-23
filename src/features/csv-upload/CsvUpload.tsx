@@ -35,6 +35,13 @@ export function CsvUpload({ onBatchCreated }: Props) {
     if (f) handleFile(f)
   }
 
+  function handleDropZoneKeyDown(e: React.KeyboardEvent) {
+    if (e.key === 'Enter' || e.key === ' ') {
+      e.preventDefault()
+      inputRef.current?.click()
+    }
+  }
+
   async function handleUpload() {
     if (!file) return
     setProcessing(true)
@@ -50,14 +57,18 @@ export function CsvUpload({ onBatchCreated }: Props) {
   }
 
   return (
-    <div className="bg-white rounded-xl border border-gray-200 p-6 space-y-5">
+    <div className="bg-white rounded-xl border border-stone-200 shadow-sm p-6 space-y-5">
       <div
+        role="button"
+        tabIndex={0}
+        aria-label={file ? `Selected file: ${file.name}. Press Enter to change file.` : 'Drop a CSV file here or press Enter to browse'}
         onDragOver={(e) => { e.preventDefault(); setDragOver(true) }}
         onDragLeave={() => setDragOver(false)}
         onDrop={handleDrop}
         onClick={() => inputRef.current?.click()}
-        className={`border-2 border-dashed rounded-xl p-10 flex flex-col items-center justify-center cursor-pointer transition-colors ${
-          dragOver ? 'border-blue-400 bg-blue-50' : 'border-gray-200 hover:border-gray-300'
+        onKeyDown={handleDropZoneKeyDown}
+        className={`border-2 border-dashed rounded-xl p-10 flex flex-col items-center justify-center transition-colors ${
+          dragOver ? 'border-teal-400 bg-teal-50' : 'border-stone-200 hover:border-stone-300 hover:bg-stone-50'
         }`}
       >
         <input
@@ -65,26 +76,28 @@ export function CsvUpload({ onBatchCreated }: Props) {
           type="file"
           accept=".csv"
           className="hidden"
+          aria-hidden="true"
+          tabIndex={-1}
           onChange={(e) => e.target.files?.[0] && void handleFile(e.target.files[0])}
         />
-        <svg className="w-10 h-10 text-gray-300 mb-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+        <svg className="w-10 h-10 text-stone-300 mb-3" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true">
           <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M7 16a4 4 0 01-.88-7.903A5 5 0 1115.9 6L16 6a5 5 0 011 9.9M15 13l-3-3m0 0l-3 3m3-3v12" />
         </svg>
         {file ? (
           <div className="text-center">
-            <p className="font-medium text-gray-800 text-sm">{file.name}</p>
-            <p className="text-xs text-gray-400 mt-1">{(file.size / 1024).toFixed(1)} KB</p>
+            <p className="font-semibold text-stone-800 text-sm">{file.name}</p>
+            <p className="text-xs text-stone-500 mt-1">{(file.size / 1024).toFixed(1)} KB</p>
           </div>
         ) : (
           <div className="text-center">
-            <p className="text-sm text-gray-600">Drop a CSV file here or <span className="text-blue-600 font-medium">browse</span></p>
-            <p className="text-xs text-gray-400 mt-1">Required column: company_name</p>
+            <p className="text-sm text-stone-600">Drop a CSV file here or <span className="text-app-accent font-semibold">browse</span></p>
+            <p className="text-xs text-stone-500 mt-1">Required column: company_name</p>
           </div>
         )}
       </div>
 
       {validating && (
-        <div className="p-3 bg-blue-50 border border-blue-200 rounded-lg text-sm text-blue-700">
+        <div role="status" aria-live="polite" className="p-3 bg-teal-50 border border-teal-200 rounded-lg text-sm text-teal-700">
           Validating CSV and preparing preview…
         </div>
       )}
@@ -93,7 +106,7 @@ export function CsvUpload({ onBatchCreated }: Props) {
         <a
           href="/company-template.csv"
           download
-          className="text-xs text-blue-600 hover:underline"
+          className="text-xs text-app-accent hover:text-app-accent-dim hover:underline transition-colors"
         >
           Download CSV template
         </a>
@@ -101,7 +114,7 @@ export function CsvUpload({ onBatchCreated }: Props) {
           <button
             onClick={handleUpload}
             disabled={processing || validating || !review || review.validRows === 0}
-            className="bg-blue-600 hover:bg-blue-700 disabled:opacity-50 text-white text-sm font-medium px-5 py-2 rounded-lg transition-colors"
+            className="bg-app-accent hover:bg-app-accent-dim disabled:opacity-50 disabled:cursor-not-allowed text-white text-sm font-semibold px-5 py-2 rounded-lg transition-colors"
           >
             {processing ? 'Starting…' : 'Start Processing'}
           </button>
@@ -109,7 +122,7 @@ export function CsvUpload({ onBatchCreated }: Props) {
       </div>
 
       {error && (
-        <div className="p-3 bg-red-50 border border-red-200 rounded-lg text-sm text-red-700">
+        <div role="alert" className="p-3 bg-red-50 border border-red-200 rounded-lg text-sm text-red-700">
           {error}
         </div>
       )}
@@ -124,32 +137,32 @@ export function CsvUpload({ onBatchCreated }: Props) {
 
       {review && review.parseErrors.length > 0 && (
         <div className="p-3 bg-yellow-50 border border-yellow-200 rounded-lg">
-          <p className="text-xs font-medium text-yellow-700 mb-1">{review.parseErrors.length} rows skipped:</p>
+          <p className="text-xs font-semibold text-yellow-800 mb-1">{review.parseErrors.length} rows skipped:</p>
           {review.parseErrors.slice(0, 5).map((e) => (
-            <p key={e.row} className="text-xs text-yellow-600">Row {e.row}: {e.message}</p>
+            <p key={e.row} className="text-xs text-yellow-700">Row {e.row}: {e.message}</p>
           ))}
         </div>
       )}
 
       {review?.preview && review.preview.length > 0 && (
         <div>
-          <p className="text-xs font-medium text-gray-500 mb-2">
+          <p className="text-xs font-medium text-stone-500 mb-2">
             Preview first {review.preview.length} valid rows before processing:
           </p>
-          <div className="overflow-x-auto border border-gray-200 rounded-lg">
+          <div className="overflow-x-auto border border-stone-200 rounded-lg">
             <table className="w-full text-xs">
-              <thead className="bg-gray-50">
+              <thead className="bg-stone-50">
                 <tr>
                   {Object.keys(review.preview[0]).map((k) => (
-                    <th key={k} className="px-3 py-2 text-left text-gray-500 font-medium">{k}</th>
+                    <th key={k} className="px-3 py-2 text-left text-stone-600 font-semibold">{k}</th>
                   ))}
                 </tr>
               </thead>
               <tbody>
                 {review.preview.map((row, i) => (
-                  <tr key={i} className="border-t border-gray-100">
+                  <tr key={i} className="border-t border-stone-100">
                     {Object.values(row).map((v, j) => (
-                      <td key={j} className="px-3 py-2 text-gray-700">{v as string}</td>
+                      <td key={j} className="px-3 py-2 text-stone-700">{v as string}</td>
                     ))}
                   </tr>
                 ))}
@@ -164,15 +177,15 @@ export function CsvUpload({ onBatchCreated }: Props) {
 
 function MetricCard({ label, value, tone }: { label: string; value: number; tone: 'neutral' | 'green' | 'yellow' }) {
   const tones = {
-    neutral: 'bg-gray-50 border-gray-200 text-gray-800',
-    green: 'bg-green-50 border-green-200 text-green-800',
+    neutral: 'bg-stone-50 border-stone-200 text-stone-800',
+    green: 'bg-emerald-50 border-emerald-200 text-emerald-800',
     yellow: 'bg-yellow-50 border-yellow-200 text-yellow-800',
   }
 
   return (
     <div className={`rounded-lg border px-4 py-3 ${tones[tone]}`}>
-      <div className="text-2xl font-semibold">{value}</div>
-      <div className="text-xs mt-1">{label}</div>
+      <div className="text-2xl font-bold">{value}</div>
+      <div className="text-xs mt-1 font-medium">{label}</div>
     </div>
   )
 }

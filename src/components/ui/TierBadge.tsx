@@ -24,10 +24,10 @@ export function TierBadge({ tier }: { tier: string }) {
   }
 
   const c = config[tier] ?? {
-    bg: 'bg-slate-50',
-    text: 'text-slate-600',
-    border: 'border-slate-200',
-    dot: 'bg-slate-400',
+    bg: 'bg-stone-50',
+    text: 'text-stone-600',
+    border: 'border-stone-200',
+    dot: 'bg-stone-400',
     label: tier,
   }
 

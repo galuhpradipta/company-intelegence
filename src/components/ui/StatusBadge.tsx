@@ -1,7 +1,7 @@
 export function StatusBadge({ status, small }: { status: string; small?: boolean }) {
   const config: Record<string, { bg: string; text: string; dot: string; label: string }> = {
-    pending:    { bg: 'bg-slate-100',  text: 'text-slate-600',  dot: 'bg-slate-400',  label: 'Pending' },
-    processing: { bg: 'bg-blue-50',   text: 'text-blue-700',   dot: 'bg-blue-500',   label: 'Processing' },
+    pending:    { bg: 'bg-stone-100',  text: 'text-stone-600',  dot: 'bg-stone-400',  label: 'Pending' },
+    processing: { bg: 'bg-teal-50',   text: 'text-teal-700',   dot: 'bg-teal-500',   label: 'Processing' },
     completed:  { bg: 'bg-emerald-50', text: 'text-emerald-700', dot: 'bg-emerald-500', label: 'Completed' },
     failed:     { bg: 'bg-red-50',    text: 'text-red-700',    dot: 'bg-red-500',    label: 'Failed' },
   }

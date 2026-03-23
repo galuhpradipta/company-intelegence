@@ -2,27 +2,27 @@
 
 /* ================================================
    APP DESIGN SYSTEM — Company Intelligence
-   Light editorial theme with Plus Jakarta Sans.
+   Light editorial theme with Instrument Serif + DM Sans.
    ================================================ */
 
 @theme {
-  --font-display: "Plus Jakarta Sans", ui-sans-serif, system-ui, sans-serif;
-  --font-body: "Plus Jakarta Sans", ui-sans-serif, system-ui, sans-serif;
+  --font-display: "Instrument Serif", ui-serif, Georgia, serif;
+  --font-body: "DM Sans", ui-sans-serif, system-ui, sans-serif;
 
-  --color-app-bg: #f8f9fc;
+  --color-app-bg: #faf8f5;
   --color-app-surface: #ffffff;
-  --color-app-surface-hover: #f1f5f9;
+  --color-app-surface-hover: #f5f0eb;
   --color-app-surface-raised: #ffffff;
-  --color-app-border: #e2e8f0;
-  --color-app-border-subtle: #f1f5f9;
-  --color-app-accent: #2563eb;
-  --color-app-accent-light: #3b82f6;
-  --color-app-accent-dim: #1d4ed8;
-  --color-app-text: #0f172a;
-  --color-app-text-muted: #475569;
-  --color-app-text-dim: #64748b;
+  --color-app-border: #e7e0d8;
+  --color-app-border-subtle: #f0ebe5;
+  --color-app-accent: #0f766e;
+  --color-app-accent-light: #14b8a6;
+  --color-app-accent-dim: #115e59;
+  --color-app-text: #1c1917;
+  --color-app-text-muted: #57534e;
+  --color-app-text-dim: #78716c;
   --color-app-red: #dc2626;
-  --color-app-green: #16a34a;
+  --color-app-green: #15803d;
 }
 
 *,
@@ -79,77 +79,20 @@ summary {
 }
 
 ::-webkit-scrollbar-thumb {
-  background: rgba(100, 116, 139, 0.2);
+  background: rgba(120, 113, 108, 0.2);
   border-radius: 3px;
 }
 
 ::-webkit-scrollbar-thumb:hover {
-  background: rgba(100, 116, 139, 0.35);
+  background: rgba(120, 113, 108, 0.35);
 }
 
 * {
   scrollbar-width: thin;
-  scrollbar-color: rgba(100, 116, 139, 0.2) transparent;
-}
-
-/* ------------------------------------------------ Touch targets */
-.touch-target-44 {
-  min-width: 44px;
-  min-height: 44px;
-  display: flex;
-  align-items: center;
-  justify-content: center;
+  scrollbar-color: rgba(120, 113, 108, 0.2) transparent;
 }
 
 /* ------------------------------------------------ Animations */
-@keyframes pulse-accent {
-  0%,
-  100% {
-    opacity: 0.5;
-  }
-  50% {
-    opacity: 1;
-  }
-}
-
-@keyframes float-subtle {
-  0%,
-  100% {
-    transform: translateY(0);
-  }
-  50% {
-    transform: translateY(-3px);
-  }
-}
-
-@keyframes float {
-  0%,
-  100% {
-    transform: translateY(0);
-  }
-  50% {
-    transform: translateY(-6px);
-  }
-}
-
-@keyframes slide-up {
-  from {
-    transform: translateY(100%);
-  }
-  to {
-    transform: translateY(0);
-  }
-}
-
-@keyframes overlay-fade-in {
-  from {
-    opacity: 0;
-  }
-  to {
-    opacity: 1;
-  }
-}
-
 @keyframes shimmer {
   0% {
     transform: translateX(-150%);
@@ -170,40 +113,13 @@ summary {
   }
 }
 
-@keyframes step-fade {
-  0% {
-    opacity: 0;
-    transform: translateY(4px);
-  }
-  15%, 85% {
-    opacity: 1;
-    transform: translateY(0);
-  }
-  100% {
-    opacity: 0;
-    transform: translateY(-4px);
-  }
-}
-
 @keyframes processing-pulse {
   0%, 100% {
-    box-shadow: 0 0 0 0 rgba(37, 99, 235, 0.25);
+    box-shadow: 0 0 0 0 rgba(15, 118, 110, 0.25);
   }
   50% {
-    box-shadow: 0 0 0 6px rgba(37, 99, 235, 0);
+    box-shadow: 0 0 0 6px rgba(15, 118, 110, 0);
   }
-}
-
-.animate-float {
-  animation: float 3s ease-in-out infinite;
-}
-
-.animate-slide-up {
-  animation: slide-up 0.3s ease-out both;
-}
-
-.animate-overlay-fade-in {
-  animation: overlay-fade-in 150ms ease-out;
 }
 
 .animate-fade-up {
@@ -239,103 +155,8 @@ summary {
 .stagger-6 { animation-delay: 0.30s; }
 
 @media (prefers-reduced-motion: reduce) {
-  .animate-float,
-  .animate-slide-up,
-  .animate-overlay-fade-in,
   .animate-fade-up,
   .shimmer-bar::after {
-    animation: none !important;
-  }
-}
-
-/* ================================================
-   LEGACY — dark glass theme (src/components/ only,
-   not used by active router routes)
-   ================================================ */
-
-/* LEGACY: dark background */
-.app-bg {
-  background-color: #0a0a0f;
-  background-image:
-    radial-gradient(ellipse at 50% 0%, rgba(59, 130, 246, 0.04) 0%, transparent 60%),
-    url("data:image/svg+xml,%3Csvg viewBox='0 0 256 256' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='noise'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23noise)' opacity='0.02'/%3E%3C/svg%3E");
-}
-
-/* LEGACY: glass panels */
-.glass-panel {
-  background: rgba(20, 20, 25, 0.96);
-  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.03);
-  border-left: 1px solid rgba(59, 130, 246, 0.08);
-}
-
-.glass-panel-bottom {
-  background: rgba(20, 20, 25, 0.97);
-  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.03);
-  border-top: 1px solid rgba(59, 130, 246, 0.12);
-  border-radius: 16px 16px 0 0;
-}
-
-/* LEGACY: header */
-.header-glass {
-  background:
-    linear-gradient(180deg, rgba(59, 130, 246, 0.03) 0%, transparent 2px, transparent 100%),
-    linear-gradient(180deg, rgba(20, 20, 25, 0.97) 0%, rgba(20, 20, 25, 0.9) 100%);
-  box-shadow:
-    0 1px 0 rgba(59, 130, 246, 0.08),
-    0 4px 24px rgba(0, 0, 0, 0.5);
-}
-
-/* LEGACY: bottom nav */
-.bottom-nav {
-  position: fixed;
-  bottom: 0;
-  left: 0;
-  right: 0;
-  max-width: 430px;
-  margin-left: auto;
-  margin-right: auto;
-  z-index: 40;
-  padding-bottom: env(safe-area-inset-bottom, 0px);
-}
-
-@media (min-width: 768px) {
-  .bottom-nav {
-    max-width: 960px;
-  }
-}
-
-/* LEGACY: nav link icons */
-.nav-link-icon {
-  transition:
-    transform 0.2s ease,
-    filter 0.2s ease;
-}
-
-.nav-link-icon-active {
-  filter: drop-shadow(0 0 4px rgba(59, 130, 246, 0.45));
-}
-
-/* LEGACY: pulse accent glow */
-.animate-pulse-accent {
-  position: relative;
-}
-
-.animate-pulse-accent::after {
-  content: "";
-  position: absolute;
-  inset: 0;
-  border-radius: inherit;
-  box-shadow:
-    0 0 20px rgba(59, 130, 246, 0.5),
-    0 0 50px rgba(59, 130, 246, 0.2);
-  animation: pulse-accent 2s ease-in-out infinite;
-  pointer-events: none;
-  will-change: opacity;
-}
-
-@media (prefers-reduced-motion: reduce) {
-  .animate-pulse-accent::after,
-  .nav-link-icon-active {
     animation: none !important;
   }
 }

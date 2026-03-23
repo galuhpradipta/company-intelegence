@@ -29,3 +29,6 @@ dist
 /blob-report/
 /playwright/.cache/
 .playwright-mcp/
+
+# Local scratch
+/tmp/
