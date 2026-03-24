@@ -16,11 +16,5 @@
     "types": ["node"]
   },
   "include": ["vite.config.ts", "server/**/*.ts", "drizzle.config.ts"],
-  "exclude": [
-    "server/**/*.test.ts",
-    "server/lib/env.ts",
-    "server/middleware/auth.ts",
-    "server/routes/auth.ts",
-    "server/routes/notes.ts"
-  ]
+  "exclude": ["server/**/*.test.ts"]
 }

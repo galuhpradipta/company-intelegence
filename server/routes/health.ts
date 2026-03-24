@@ -8,7 +8,7 @@ healthRoute.get('/', async (c) => {
   try {
     await db.execute(sql`SELECT 1`)
     return c.json({ status: 'ok', db: 'ok', timestamp: new Date().toISOString() })
-  } catch (err) {
+  } catch {
     return c.json({ status: 'error', db: 'unreachable', timestamp: new Date().toISOString() }, 503)
   }
 })
