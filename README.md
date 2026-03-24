@@ -453,6 +453,7 @@ Coverage priorities per spec:
 - `tests/unit/merger.test.ts` — entity clustering, provider precedence in field merge
 - `tests/unit/normalizer.test.ts` — legal suffix stripping, domain/country normalization
 - `tests/unit/csv-parser.test.ts` — BOM handling, empty rows, case-insensitive columns, trim
+- `server/routes/relevancy.integration.test.ts` — real route + service-path scoring in mock mode, proving a clearly relevant article scores high and a weakly related one scores low
 - `tests/unit/deduplicator.test.ts` — URL dedup, title fingerprint, 72-hour event window
 - `tests/unit/persistence-metadata.test.ts` — field-confidence and identifier extraction for persistence
 
