@@ -126,6 +126,13 @@ describe('buildBatchStatusPayload', () => {
           score: 70,
           selected: false,
         },
+        {
+          resolutionInputId: 'input-3',
+          companyId: 'company-6',
+          rank: 1,
+          score: 42,
+          selected: false,
+        },
       ],
       companyRecords: [
         { id: 'company-1', displayName: 'Acme Corporation', domain: 'acme.com' },
@@ -133,6 +140,7 @@ describe('buildBatchStatusPayload', () => {
         { id: 'company-3', displayName: 'Beta Labs Holdings', domain: 'beta-holdings.com' },
         { id: 'company-4', displayName: 'Beta Labs LLC', domain: 'betalabs.co' },
         { id: 'company-5', displayName: 'Beta Labs Group', domain: 'betalabsgroup.com' },
+        { id: 'company-6', displayName: 'Gamma Systems Research', domain: null },
       ],
       sourceRecords: [
         { companyId: 'company-1', provider: 'people_data_labs' },
@@ -140,6 +148,7 @@ describe('buildBatchStatusPayload', () => {
         { companyId: 'company-4', provider: 'people_data_labs' },
         { companyId: 'company-4', provider: 'people_data_labs' },
         { companyId: 'company-4', provider: 'opencorporates' },
+        { companyId: 'company-6', provider: 'ai_fallback' },
       ],
     })
 
@@ -179,6 +188,7 @@ describe('buildBatchStatusPayload', () => {
 
     expect(result.items[2]).toMatchObject({
       rowNumber: 3,
+      companyId: null,
       matchTier: 'not_found',
       confidenceScore: 0,
       submittedInput: {

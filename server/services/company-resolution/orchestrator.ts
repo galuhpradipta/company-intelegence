@@ -1,5 +1,5 @@
 import pLimit from 'p-limit'
-import { asc, eq } from 'drizzle-orm'
+import { and, asc, eq, inArray, or } from 'drizzle-orm'
 import { db } from '../../db/client.js'
 import {
   resolutionInputs,
@@ -8,7 +8,7 @@ import {
   companySourceRecords,
   companyMatches,
 } from '../../db/schema/index.js'
-import type { CompanyInput } from '../../providers/company/types.js'
+import type { CandidateCompany, CandidateIdentifier, CompanyInput } from '../../providers/company/types.js'
 import {
   getCompanyProviderByName,
   getDeterministicCompanyProviders,
@@ -35,6 +35,36 @@ export interface ResolveResult {
   resolutionInputId: string
   topTier: 'confident' | 'suggested' | 'not_found'
   candidates: ResolvedCandidate[]
+}
+
+const existingCompanySelection = {
+  id: companies.id,
+  legalName: companies.legalName,
+  industry: companies.industry,
+  employeeCount: companies.employeeCount,
+  hqAddress: companies.hqAddress,
+  hqCity: companies.hqCity,
+  hqState: companies.hqState,
+  hqCountry: companies.hqCountry,
+  createdAt: companies.createdAt,
+}
+
+export interface ExistingCanonicalCompany {
+  id: string
+  legalName: string | null
+  industry: string | null
+  employeeCount: number | null
+  hqAddress: string | null
+  hqCity: string | null
+  hqState: string | null
+  hqCountry: string | null
+  createdAt: Date
+}
+
+export interface CanonicalLookupInput {
+  normalizedDomain: string | null
+  identifiers: CandidateIdentifier[]
+  sources: CandidateCompany[]
 }
 
 export async function resolveCompany(
@@ -122,6 +152,15 @@ export async function resolveCompany(
     const tier = toMatchTier(breakdown.finalScore)
     const normalizedDomain = candidate.domain ? normalizeDomain(candidate.domain) : null
     const resolvedAddress = candidate.hqAddress ?? input.address
+    const identifiersToInsert = candidate.sources
+      .flatMap(extractIdentifiers)
+      .filter((identifier, index, identifiers) =>
+        identifiers.findIndex((candidateIdentifier) =>
+          candidateIdentifier.identifierType === identifier.identifierType
+          && candidateIdentifier.identifierValue === identifier.identifierValue
+          && candidateIdentifier.source === identifier.source
+        ) === index,
+      )
     const companyValues = {
       displayName: candidate.displayName,
       legalName: candidate.legalName,
@@ -138,51 +177,32 @@ export async function resolveCompany(
 
     let companyId: string
 
-    if (normalizedDomain) {
-      const [existingCompany] = await db
-        .select({
-          id: companies.id,
-          legalName: companies.legalName,
-          industry: companies.industry,
-          employeeCount: companies.employeeCount,
-          hqAddress: companies.hqAddress,
-          hqCity: companies.hqCity,
-          hqState: companies.hqState,
-          hqCountry: companies.hqCountry,
+    const existingCompany = await findExistingCanonicalCompany({
+      normalizedDomain,
+      identifiers: identifiersToInsert,
+      sources: candidate.sources,
+    })
+
+    if (existingCompany) {
+      await db
+        .update(companies)
+        .set({
+          displayName: candidate.displayName,
+          legalName: candidate.legalName ?? existingCompany.legalName,
+          domain: normalizedDomain ?? undefined,
+          industry: candidate.industry ?? existingCompany.industry,
+          employeeCount: candidate.employeeCount ?? existingCompany.employeeCount,
+          hqAddress: resolvedAddress ?? existingCompany.hqAddress,
+          hqCity: candidate.hqCity ?? existingCompany.hqCity,
+          hqState: candidate.hqState ?? existingCompany.hqState,
+          hqCountry: candidate.hqCountry ?? existingCompany.hqCountry ?? 'US',
+          matchTier: tier,
+          confidenceScore: breakdown.finalScore,
+          updatedAt: new Date(),
         })
-        .from(companies)
-        .where(eq(companies.domain, normalizedDomain))
-        .orderBy(asc(companies.createdAt))
-        .limit(1)
+        .where(eq(companies.id, existingCompany.id))
 
-      if (existingCompany) {
-        await db
-          .update(companies)
-          .set({
-            displayName: candidate.displayName,
-            legalName: candidate.legalName ?? existingCompany.legalName,
-            domain: normalizedDomain,
-            industry: candidate.industry ?? existingCompany.industry,
-            employeeCount: candidate.employeeCount ?? existingCompany.employeeCount,
-            hqAddress: resolvedAddress ?? existingCompany.hqAddress,
-            hqCity: candidate.hqCity ?? existingCompany.hqCity,
-            hqState: candidate.hqState ?? existingCompany.hqState,
-            hqCountry: candidate.hqCountry ?? existingCompany.hqCountry ?? 'US',
-            matchTier: tier,
-            confidenceScore: breakdown.finalScore,
-            updatedAt: new Date(),
-          })
-          .where(eq(companies.id, existingCompany.id))
-
-        companyId = existingCompany.id
-      } else {
-        const [company] = await db
-          .insert(companies)
-          .values(companyValues)
-          .returning({ id: companies.id })
-
-        companyId = company.id
-      }
+      companyId = existingCompany.id
     } else {
       const [company] = await db
         .insert(companies)
@@ -216,16 +236,6 @@ export async function resolveCompany(
         })
     }
 
-    const identifiersToInsert = candidate.sources
-      .flatMap(extractIdentifiers)
-      .filter((identifier, index, identifiers) =>
-        identifiers.findIndex((candidateIdentifier) =>
-          candidateIdentifier.identifierType === identifier.identifierType
-          && candidateIdentifier.identifierValue === identifier.identifierValue
-          && candidateIdentifier.source === identifier.source
-        ) === index,
-      )
-
     if (identifiersToInsert.length > 0) {
       await db
         .insert(companyIdentifiers)
@@ -254,7 +264,7 @@ export async function resolveCompany(
       rank: i + 1,
       score: breakdown.finalScore,
       scoreBreakdown: breakdown as unknown as Record<string, unknown>,
-      selected: i === 0, // auto-select top match
+      selected: i === 0 && tier !== 'not_found',
     })
 
     resolvedCandidates.push({
@@ -283,4 +293,118 @@ export async function resolveCompany(
     topTier,
     candidates: resolvedCandidates,
   }
+}
+
+export async function findExistingCanonicalCompany(
+  input: CanonicalLookupInput,
+): Promise<ExistingCanonicalCompany | null> {
+  const identifierCompany = await findCompanyByIdentifiers(input.identifiers)
+  if (identifierCompany) {
+    return identifierCompany
+  }
+
+  const sourceRecordCompany = await findCompanyBySourceRecords(input.sources)
+  if (sourceRecordCompany) {
+    return sourceRecordCompany
+  }
+
+  if (input.normalizedDomain) {
+    return findCompanyByDomain(input.normalizedDomain)
+  }
+
+  return null
+}
+
+async function findCompanyByIdentifiers(
+  identifiers: CandidateIdentifier[],
+): Promise<ExistingCanonicalCompany | null> {
+  const identifierConditions = identifiers
+    .map((identifier) => ({
+      identifierType: identifier.identifierType.trim(),
+      identifierValue: identifier.identifierValue.trim(),
+    }))
+    .filter((identifier) => identifier.identifierType && identifier.identifierValue)
+
+  if (identifierConditions.length === 0) {
+    return null
+  }
+
+  const existingIdentifiers = await db
+    .select({ companyId: companyIdentifiers.companyId })
+    .from(companyIdentifiers)
+    .where(or(
+      ...identifierConditions.map((identifier) =>
+        and(
+          eq(companyIdentifiers.identifierType, identifier.identifierType),
+          eq(companyIdentifiers.identifierValue, identifier.identifierValue),
+        ),
+      ),
+    ))
+
+  return findOldestCompanyByIds(existingIdentifiers.map((identifier) => identifier.companyId))
+}
+
+async function findCompanyBySourceRecords(
+  sources: CandidateCompany[],
+): Promise<ExistingCanonicalCompany | null> {
+  const sourceConditions = sources
+    .flatMap((source) => {
+      const providerRecordId = source.providerRecordId?.trim()
+      if (!providerRecordId) return []
+
+      return [{
+        provider: source.providerName,
+        providerRecordId,
+      }]
+    })
+
+  if (sourceConditions.length === 0) {
+    return null
+  }
+
+  const existingSources = await db
+    .select({ companyId: companySourceRecords.companyId })
+    .from(companySourceRecords)
+    .where(or(
+      ...sourceConditions.map((source) =>
+        and(
+          eq(companySourceRecords.provider, source.provider),
+          eq(companySourceRecords.providerRecordId, source.providerRecordId),
+        ),
+      ),
+    ))
+
+  return findOldestCompanyByIds(existingSources.map((source) => source.companyId))
+}
+
+async function findCompanyByDomain(
+  normalizedDomain: string,
+): Promise<ExistingCanonicalCompany | null> {
+  const [company] = await db
+    .select(existingCompanySelection)
+    .from(companies)
+    .where(eq(companies.domain, normalizedDomain))
+    .orderBy(asc(companies.createdAt))
+    .limit(1)
+
+  return company ?? null
+}
+
+async function findOldestCompanyByIds(
+  companyIds: string[],
+): Promise<ExistingCanonicalCompany | null> {
+  const uniqueIds = [...new Set(companyIds)]
+
+  if (uniqueIds.length === 0) {
+    return null
+  }
+
+  const [company] = await db
+    .select(existingCompanySelection)
+    .from(companies)
+    .where(inArray(companies.id, uniqueIds))
+    .orderBy(asc(companies.createdAt))
+    .limit(1)
+
+  return company ?? null
 }

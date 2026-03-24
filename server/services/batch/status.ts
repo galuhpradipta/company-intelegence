@@ -199,7 +199,7 @@ export function buildBatchStatusPayload(records: BatchStatusBuildRecord) {
       ? matchesByResolutionInputId.get(item.resolutionInputId) ?? []
       : []
 
-    const suggestedCandidates = matches.slice(0, 3).flatMap((match) => {
+    const allCandidates = matches.flatMap((match) => {
       const company = companyById.get(match.companyId)
       if (!company) return []
 
@@ -213,13 +213,22 @@ export function buildBatchStatusPayload(records: BatchStatusBuildRecord) {
         selected: match.selected,
       }]
     })
-    const selectedCandidate = suggestedCandidates.find((candidate) => candidate.selected)
-      ?? suggestedCandidates[0]
-      ?? null
+    const visibleTopTier = allCandidates[0]?.matchTier ?? null
+    const shouldHideCandidates = visibleTopTier === 'not_found'
+    const suggestedCandidates = shouldHideCandidates
+      ? []
+      : allCandidates.slice(0, 3)
+    const selectedCandidate = shouldHideCandidates
+      ? null
+      : suggestedCandidates.find((candidate) => candidate.selected)
+        ?? suggestedCandidates[0]
+        ?? null
 
     const matchTier = selectedCandidate
       ? selectedCandidate.matchTier
-      : item.status === 'completed'
+      : visibleTopTier === 'not_found'
+        ? 'not_found'
+        : item.status === 'completed'
         ? 'not_found'
         : null
 
@@ -227,7 +236,9 @@ export function buildBatchStatusPayload(records: BatchStatusBuildRecord) {
       rowNumber: item.rowNumber,
       status: item.status,
       resolutionInputId: item.resolutionInputId,
-      companyId: selectedCandidate?.companyId ?? item.resultCompanyId,
+      companyId: matchTier === 'not_found'
+        ? null
+        : selectedCandidate?.companyId ?? item.resultCompanyId,
       confidenceScore: selectedCandidate?.confidenceScore ?? (matchTier === 'not_found' ? 0 : null),
       matchTier,
       errorMessage: item.errorMessage,

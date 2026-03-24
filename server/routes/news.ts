@@ -9,7 +9,7 @@ newsRoute.post('/fetch/:companyId', async (c) => {
   return c.json(await refreshCompanyNews(companyId))
 })
 
-// GET /api/news/:companyId
+// GET /api/news/:companyId (relevancy-ranked, with optional low-relevance items via showAll=true)
 newsRoute.get('/:companyId', async (c) => {
   const companyId = c.req.param('companyId')
   const showAll = c.req.query('showAll') === 'true'

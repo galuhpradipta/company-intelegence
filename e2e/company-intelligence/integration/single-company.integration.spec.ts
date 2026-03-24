@@ -59,6 +59,51 @@ test("single-company not-found flow keeps the user on the input view with a retr
   await page.getByRole("button", { name: "Resolve Company" }).click();
 
   await expect(page).toHaveURL("/");
-  await expect(page.getByRole("alert")).toContainText("No matches found. Try providing more context.");
+  await expect(page.getByRole("alert")).toContainText("No confident match found. Try providing more context.");
   await expect(page.getByRole("heading", { name: "Resolve Companies" })).toBeVisible();
+});
+
+test("single-company low-confidence matches stay in not-found state and do not render confirm actions", async ({ page }) => {
+  await page.goto("/");
+
+  await page.getByPlaceholder("e.g. Apple Inc.").fill("Delta Robotics Advisors");
+
+  await page.getByRole("button", { name: "Resolve Company" }).click();
+
+  await expect(page).toHaveURL("/");
+  await expect(page.getByRole("alert")).toContainText("No confident match found. Try providing more context.");
+  await expect(page.getByRole("button", { name: /Confirm / })).toHaveCount(0);
+  await expect(page.getByText("Suggested matches — confirm the correct company:")).toHaveCount(0);
+});
+
+test("repeated suggested resolutions without a domain reuse the same canonical company record", async ({ page }) => {
+  await page.goto("/");
+
+  await page.getByPlaceholder("e.g. Apple Inc.").fill("Nexus Health Systems");
+  await page.getByPlaceholder("New York").fill("Austin");
+  await page.getByPlaceholder("NY").fill("TX");
+  await page.getByPlaceholder("e.g. Technology").fill("Health");
+
+  await page.getByRole("button", { name: "Resolve Company" }).click();
+
+  await expect(page.getByText("Suggested matches — confirm the correct company:")).toBeVisible();
+  await page.getByRole("button", { name: "Confirm Nexus Health Systems" }).click();
+
+  await expect(page).toHaveURL(/\/company\/[0-9a-f-]+$/);
+  const firstCompanyId = page.url().match(/\/company\/([0-9a-f-]+)$/)?.[1];
+  expect(firstCompanyId).toBeTruthy();
+
+  await page.goto("/");
+
+  await page.getByPlaceholder("e.g. Apple Inc.").fill("Nexus Health Systems");
+  await page.getByPlaceholder("New York").fill("Austin");
+  await page.getByPlaceholder("e.g. Technology").fill("Health");
+
+  await page.getByRole("button", { name: "Resolve Company" }).click();
+
+  await expect(page.getByText("Suggested matches — confirm the correct company:")).toBeVisible();
+  await page.getByRole("button", { name: "Confirm Nexus Health Systems" }).click();
+
+  await expect(page).toHaveURL(new RegExp(`/company/${firstCompanyId}$`));
+  await expect(page.getByRole("heading", { name: "Nexus Health Systems" })).toBeVisible();
 });

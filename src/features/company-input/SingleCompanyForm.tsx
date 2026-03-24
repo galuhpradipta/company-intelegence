@@ -105,15 +105,17 @@ export function SingleCompanyForm({ onResolved, initialValues }: Props) {
         industry: form.industry || undefined,
       })
       setResolutionInputId(result.resolutionInputId)
-      if (result.candidates.length === 0) {
-        setError('No matches found. Try providing more context.')
-        return
-      }
-      if (result.topTier === 'confident') {
+      if (result.topTier === 'confident' && result.candidates[0]) {
         showMatchedCandidate(result.candidates[0])
         return
       }
-      setCandidates(result.candidates.slice(0, 3))
+
+      if (result.topTier === 'suggested' && result.candidates.length > 0) {
+        setCandidates(result.candidates.slice(0, 3))
+        return
+      }
+
+      setError('No confident match found. Try providing more context.')
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Resolution failed')
     } finally {

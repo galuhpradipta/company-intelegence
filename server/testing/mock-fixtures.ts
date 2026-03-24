@@ -133,6 +133,66 @@ const COMPANY_SCENARIOS: MockCompanyScenario[] = [
       },
     ],
   },
+  {
+    aliases: ['delta robotics advisors', 'delta robotics advisory'],
+    candidates: [
+      {
+        providerName: 'ai_fallback',
+        providerRecordId: 'ai_delta_robotics_advisors',
+        displayName: 'Delta Robotics Advisors',
+        legalName: 'Delta Robotics Advisors',
+        hqCountry: 'US',
+        rawPayload: {
+          provider: 'fixture-ai',
+        },
+      },
+    ],
+  },
+  {
+    aliases: ['nexus health', 'nexus health systems'],
+    candidates: [
+      {
+        providerName: 'sec_edgar',
+        providerRecordId: '0001987654',
+        displayName: 'Nexus Health Systems',
+        legalName: 'Nexus Health Systems',
+        industry: 'Health Technology',
+        hqAddress: '400 Congress Avenue',
+        hqCity: 'Austin',
+        hqState: 'TX',
+        hqCountry: 'US',
+        identifiers: [
+          { identifierType: 'cik', identifierValue: '0001987654', source: 'sec_edgar' },
+          { identifierType: 'ticker', identifierValue: 'NXHS', source: 'sec_edgar' },
+        ],
+        rawPayload: {
+          cik: '0001987654',
+          ticker: 'NXHS',
+        },
+      },
+      {
+        providerName: 'opencorporates',
+        providerRecordId: 'oc_nexus_health_001',
+        displayName: 'Nexus Health Systems',
+        legalName: 'Nexus Health Systems LLC',
+        industry: 'Health Technology',
+        hqAddress: '400 Congress Avenue',
+        hqCity: 'Austin',
+        hqState: 'TX',
+        hqCountry: 'US',
+        identifiers: [
+          {
+            identifierType: 'company_number',
+            identifierValue: 'oc_nexus_health_001',
+            source: 'opencorporates',
+          },
+        ],
+        rawPayload: {
+          companyNumber: 'oc_nexus_health_001',
+        },
+      },
+    ],
+  },
 ]
 
 const NEWS_SCENARIOS: MockNewsScenario[] = [

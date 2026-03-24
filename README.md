@@ -288,7 +288,7 @@ flowchart TD
 | `GET /api/company/:id` | Return the persisted canonical company profile plus source records and identifiers |
 | `GET /api/batch/:id` | Return batch progress, counts, and row-level statuses |
 | `POST /api/news/fetch/:companyId` | Fetch recent news for a resolved company |
-| `GET /api/news/:companyId` | Return stored company news, optionally including low-relevance items |
+| `GET /api/news/:companyId` | Return stored company news ranked by relevancy, optionally including low-relevance items |
 | `POST /api/relevancy/score` | Score one article against one company context |
 | `POST /api/relevancy/batch` | Score a batch of articles against one company context |
 
@@ -422,7 +422,7 @@ These are the main places where the current v1 implementation is intentionally l
 |---|---|---|
 | In-process batch queue | CSV jobs run inside the web process, so a deploy or crash can interrupt a batch and make 50+ row reliability dependent on one server instance | Move batch resolution, news fetch, and relevancy scoring into a durable worker queue with retries, dead-letter handling, and SSE or WebSocket progress updates |
 | Provider-specific rate limiting is basic | Different providers have very different quotas, and SEC EDGAR in particular has a hard fair-access threshold that should not be crossed during bursts | Add per-provider token buckets, adaptive backoff, quota-aware scheduling, and caching so free-tier and public-data adapters are protected independently |
-| No cross-request canonical deduplication | The same company can be persisted multiple times across separate resolutions, which fragments source records, news history, and manual confirmations | Add unique constraints and merge keys on stable identifiers such as domain, CIK, OpenCorporates company number, and PDL IDs, then route writes through an upsert-and-merge service |
+| Historical duplicate companies are not backfilled | New resolutions now reuse canonical companies by identifiers, provider record IDs, and domain, but older duplicate rows created before that logic still need cleanup | Add a one-time merge/backfill task plus stricter uniqueness constraints so historical duplicates are consolidated |
 | Static provider weighting | Provider reliability is currently a fixed multiplier, which is good for v1 but does not fully capture field freshness, source authority, or stale data drift | Add freshness decay, source-specific authority rules by field, and a visible audit trail showing why one source won over another |
 | News and scoring workflows are loosely tracked | News fetch and article scoring happen in the background, but there is no first-class job model for resume, retry, or operator visibility | Introduce job tables for enrichment stages, structured failure reasons, resumable workflows, and an admin/debug view for stuck jobs |
 | Browser and load coverage are still narrow | Core flows are covered, but there is limited confidence around large CSV runs, provider outage matrices, and regression-heavy UI states | Add load tests for 50+ row batches, provider contract tests, and deeper Playwright coverage for confirm/retry/error/detail flows |
@@ -443,7 +443,7 @@ Coverage priorities per spec:
 - `tests/unit/deduplicator.test.ts` — URL dedup, title fingerprint, 72-hour event window
 - `tests/unit/persistence-metadata.test.ts` — field-confidence and identifier extraction for persistence
 
-Browser coverage is intentionally narrow right now: the active Playwright suite only checks the Company Intelligence input entry points. The older auth/notes browser tests were archived because they were template scaffolding, not part of this trial.
+Browser coverage is broader than the initial trial baseline now: the active Playwright suite covers the single-company confident/suggested/not-found branches, low-relevance news visibility, CSV validation/progress, and the real-stack Docker-backed integration flows. The older auth/notes browser tests were archived because they were template scaffolding, not part of this trial.
 
 ## Provider Access Notes
 
