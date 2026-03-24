@@ -18,7 +18,7 @@ describe('GNewsProvider', () => {
     vi.unstubAllGlobals()
   })
 
-  it('uses the documented apikey param and free-tier-safe max size', async () => {
+  it('passes advanced query syntax through without wrapping it again', async () => {
     const fetchMock = vi.fn<typeof fetch>().mockResolvedValue({
       ok: true,
       status: 200,
@@ -42,14 +42,17 @@ describe('GNewsProvider', () => {
 
     const fromDate = new Date('2026-03-01T00:00:00.000Z')
     const toDate = new Date('2026-03-24T00:00:00.000Z')
-    const articles = await provider.fetchNews('Apple', fromDate, toDate)
+    const query = '"Apple Inc." OR "apple.com" OR "AAPL"'
+    const articles = await provider.fetchNews(query, fromDate, toDate)
 
     expect(fetchMock).toHaveBeenCalledTimes(1)
-    const url = String(fetchMock.mock.calls[0]?.[0])
-    expect(url).toContain('apikey=test-gnews-key')
-    expect(url).toContain('max=10')
-    expect(url).toContain('sortby=relevance')
-    expect(url).not.toContain('token=')
+    const url = new URL(String(fetchMock.mock.calls[0]?.[0]))
+    const searchParams = url.searchParams
+    expect(searchParams.get('apikey')).toBe('test-gnews-key')
+    expect(searchParams.get('max')).toBe('10')
+    expect(searchParams.get('sortby')).toBe('relevance')
+    expect(searchParams.get('q')).toBe(query)
+    expect(url.toString()).not.toContain('token=')
     expect(articles).toEqual([
       expect.objectContaining({
         title: 'Apple announces something',

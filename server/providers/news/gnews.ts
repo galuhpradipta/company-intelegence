@@ -12,7 +12,7 @@ export class GNewsProvider implements NewsProvider {
     }
 
     const params = new URLSearchParams({
-      q: `"${query}"`,
+      q: query,
       from: fromDate.toISOString(),
       to: toDate.toISOString(),
       lang: 'en',

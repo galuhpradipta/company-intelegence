@@ -1,15 +1,17 @@
 import { db } from '../../db/client.js'
-import { newsArticles, companyArticles, companies } from '../../db/schema/index.js'
-import { eq, inArray } from 'drizzle-orm'
+import { companyArticles, companyIdentifiers, companies, newsArticles } from '../../db/schema/index.js'
+import { and, eq, inArray } from 'drizzle-orm'
 import { getNewsProviders } from '../../providers/news/registry.js'
 import { deduplicateArticles, computeUrlHash, computeDedupeFingerprint } from './deduplicator.js'
 import { env } from '../../env.js'
+import { buildNewsSearchQuery } from './search-query.js'
 
 export async function fetchNewsForCompany(companyId: string): Promise<{ articlesIngested: number }> {
   const [company] = await db
     .select({
       id: companies.id,
       displayName: companies.displayName,
+      domain: companies.domain,
     })
     .from(companies)
     .where(eq(companies.id, companyId))
@@ -17,11 +19,25 @@ export async function fetchNewsForCompany(companyId: string): Promise<{ articles
 
   if (!company) throw new Error(`Company ${companyId} not found`)
 
+  const identifierRows = await db
+    .select({
+      identifierValue: companyIdentifiers.identifierValue,
+    })
+    .from(companyIdentifiers)
+    .where(and(
+      eq(companyIdentifiers.companyId, companyId),
+      eq(companyIdentifiers.identifierType, 'ticker'),
+    ))
+
   const toDate = new Date()
   const fromDate = new Date()
   fromDate.setDate(fromDate.getDate() - env.NEWS_LOOKBACK_DAYS)
 
-  const searchQuery = company.displayName
+  const searchQuery = buildNewsSearchQuery({
+    companyName: company.displayName,
+    domain: company.domain,
+    tickers: identifierRows.map((row) => row.identifierValue),
+  })
   const newsProviders = getNewsProviders()
 
   // Collect from all available providers
