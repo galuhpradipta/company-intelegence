@@ -95,6 +95,54 @@ describe('clusterCandidates', () => {
     expect(merged[0].hqAddress).toBe('354 Oyster Point Blvd')
   })
 
+  it('lets a meaningfully fresher source override provider rank for conflicting fields', () => {
+    const candidates: CandidateCompany[] = [
+      {
+        providerName: 'opencorporates',
+        displayName: 'Acme Holdings',
+        domain: 'acme.com',
+        industry: 'Industrial Manufacturing',
+        sourceUpdatedAt: '2024-01-10T00:00:00.000Z',
+        rawPayload: {},
+      },
+      {
+        providerName: 'people_data_labs',
+        displayName: 'Acme Holdings',
+        domain: 'acme.com',
+        industry: 'Robotics',
+        sourceUpdatedAt: '2025-03-10T00:00:00.000Z',
+        rawPayload: {},
+      },
+    ]
+
+    const merged = clusterCandidates(candidates)
+    expect(merged[0].industry).toBe('Robotics')
+  })
+
+  it('keeps the higher-rank source when the freshness advantage is minor', () => {
+    const candidates: CandidateCompany[] = [
+      {
+        providerName: 'people_data_labs',
+        displayName: 'Acme Holdings',
+        legalName: 'Acme Holdings Limited',
+        domain: 'acme.com',
+        sourceUpdatedAt: '2025-03-01T00:00:00.000Z',
+        rawPayload: {},
+      },
+      {
+        providerName: 'opencorporates',
+        displayName: 'Acme Holdings',
+        legalName: 'Acme Holdings, Inc.',
+        domain: 'acme.com',
+        sourceUpdatedAt: '2025-03-20T00:00:00.000Z',
+        rawPayload: {},
+      },
+    ]
+
+    const merged = clusterCandidates(candidates)
+    expect(merged[0].legalName).toBe('Acme Holdings, Inc.')
+  })
+
   it('keeps separate clusters for distinct companies', () => {
     const candidates: CandidateCompany[] = [
       {

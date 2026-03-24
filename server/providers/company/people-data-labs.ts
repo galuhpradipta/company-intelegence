@@ -48,6 +48,12 @@ export class PeopleDataLabsProvider implements CompanyProvider {
     return [{
       providerName: this.name,
       providerRecordId: data.id as string | undefined,
+      sourceUpdatedAt: firstString(
+        data.updated_at,
+        data.updated,
+        data.last_updated,
+        data.last_updated_at,
+      ),
       displayName: (data.legal_name as string) ?? (data.name as string) ?? input.companyName,
       legalName: data.legal_name as string | undefined,
       domain: data.website as string | undefined,

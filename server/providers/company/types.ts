@@ -29,6 +29,7 @@ export interface CandidateIdentifier {
 export interface CandidateCompany {
   providerName: string
   providerRecordId?: string
+  sourceUpdatedAt?: string
   legalName?: string
   displayName: string
   domain?: string

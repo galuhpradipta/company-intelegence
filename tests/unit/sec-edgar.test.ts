@@ -32,6 +32,7 @@ describe('SecEdgarProvider', () => {
         json: async () => ({
           cik: '0000320193',
           name: 'Apple Inc.',
+          filedAsOfDate: '2026-03-21',
           sicDescription: 'Electronic Computers',
           addresses: {
             business: {
@@ -61,6 +62,7 @@ describe('SecEdgarProvider', () => {
       expect.objectContaining({
         providerName: 'sec_edgar',
         providerRecordId: '0000320193',
+        sourceUpdatedAt: '2026-03-21',
         displayName: 'Apple Inc.',
         legalName: 'Apple Inc.',
         industry: 'Electronic Computers',

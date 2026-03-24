@@ -43,6 +43,11 @@ export class OpenCorporatesProvider implements CompanyProvider {
         return {
           providerName: this.name,
           providerRecordId: r.company_number as string | undefined,
+          sourceUpdatedAt: firstString(
+            r.updated_at,
+            r.created_at,
+            r.incorporation_date,
+          ),
           displayName: (r.name as string) ?? input.companyName,
           legalName: r.name as string | undefined,
           domain: undefined, // OC does not provide domain directly

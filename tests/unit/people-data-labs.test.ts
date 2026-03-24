@@ -26,6 +26,7 @@ describe('PeopleDataLabsProvider', () => {
         id: 'pdl_apple',
         name: 'Apple Inc.',
         legal_name: 'Apple Inc.',
+        updated_at: '2026-03-20T00:00:00.000Z',
         website: 'apple.com',
         industry: 'consumer electronics',
         employee_count: 161000,
@@ -65,6 +66,7 @@ describe('PeopleDataLabsProvider', () => {
       expect.objectContaining({
         providerName: 'people_data_labs',
         providerRecordId: 'pdl_apple',
+        sourceUpdatedAt: '2026-03-20T00:00:00.000Z',
         displayName: 'Apple Inc.',
         legalName: 'Apple Inc.',
         domain: 'apple.com',

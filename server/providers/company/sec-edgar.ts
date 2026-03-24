@@ -48,9 +48,15 @@ interface SecSubmission {
   cik: string
   name: string
   sicDescription?: string
+  filedAsOfDate?: string
   website?: string
   phone?: string
   tickers?: string[]
+  filings?: {
+    recent?: {
+      filingDate?: string[]
+    }
+  }
   addresses?: {
     business?: {
       street1?: string | null
@@ -183,6 +189,7 @@ function toCandidate(submission: SecSubmission, entry: SecTickerEntry): Candidat
   return {
     providerName: 'sec_edgar',
     providerRecordId: submission.cik,
+    sourceUpdatedAt: submission.filedAsOfDate ?? submission.filings?.recent?.filingDate?.[0],
     displayName: submission.name ?? entry.title,
     legalName: submission.name ?? entry.title,
     domain: submission.website || undefined,
@@ -201,6 +208,8 @@ function toCandidate(submission: SecSubmission, entry: SecTickerEntry): Candidat
       ticker: entry.ticker,
       tickers: submission.tickers,
       title: entry.title,
+      filedAsOfDate: submission.filedAsOfDate,
+      filings: submission.filings,
       sicDescription: submission.sicDescription,
       addresses: submission.addresses,
       formerNames: submission.formerNames,
