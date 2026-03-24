@@ -1,4 +1,4 @@
-import { useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import { trpc } from '../../lib/trpc.js'
 import { TierBadge } from '../../components/ui/TierBadge.js'
 import { Spinner } from '../../components/ui/Spinner.js'
@@ -18,6 +18,15 @@ interface FormState {
   industry: string
 }
 
+interface ResolutionCandidate {
+  companyId: string
+  displayName: string
+  domain?: string
+  confidenceScore: number
+  matchTier: string
+  sourceProviders: string[]
+}
+
 const EMPTY_FORM: FormState = {
   companyName: '',
   domain: '',
@@ -27,6 +36,8 @@ const EMPTY_FORM: FormState = {
   country: 'US',
   industry: '',
 }
+
+const AUTO_OPEN_DELAY_MS = 1500
 
 function createInitialForm(initialValues?: Partial<FormState>): FormState {
   return {
@@ -42,27 +53,46 @@ export function SingleCompanyForm({ onResolved, initialValues }: Props) {
   const [form, setForm] = useState<FormState>(() => createInitialForm(initialValues))
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState<string | null>(null)
-  const [candidates, setCandidates] = useState<Array<{
-    companyId: string
-    displayName: string
-    domain?: string
-    confidenceScore: number
-    matchTier: string
-    sourceProviders: string[]
-  }> | null>(null)
+  const [candidates, setCandidates] = useState<ResolutionCandidate[] | null>(null)
+  const [matchedCandidate, setMatchedCandidate] = useState<ResolutionCandidate | null>(null)
   const [resolutionInputId, setResolutionInputId] = useState<string | null>(null)
+  const autoOpenTimerRef = useRef<number | null>(null)
+
+  useEffect(() => () => {
+    clearAutoOpenTimer()
+  }, [])
 
   function set(key: keyof FormState, value: string) {
     setForm((f) => ({ ...f, [key]: value }))
+    clearAutoOpenTimer()
+    setMatchedCandidate(null)
     setCandidates(null)
     setError(null)
+  }
+
+  function clearAutoOpenTimer() {
+    if (autoOpenTimerRef.current !== null) {
+      window.clearTimeout(autoOpenTimerRef.current)
+      autoOpenTimerRef.current = null
+    }
+  }
+
+  function showMatchedCandidate(candidate: ResolutionCandidate) {
+    clearAutoOpenTimer()
+    setMatchedCandidate(candidate)
+    autoOpenTimerRef.current = window.setTimeout(() => {
+      autoOpenTimerRef.current = null
+      onResolved(candidate.companyId)
+    }, AUTO_OPEN_DELAY_MS)
   }
 
   async function handleResolve(e: React.FormEvent) {
     e.preventDefault()
     if (!form.companyName.trim()) return
     setLoading(true)
+    clearAutoOpenTimer()
     setError(null)
+    setMatchedCandidate(null)
     setCandidates(null)
     try {
       const result = await trpc.company.resolve.mutate({
@@ -80,7 +110,7 @@ export function SingleCompanyForm({ onResolved, initialValues }: Props) {
         return
       }
       if (result.topTier === 'confident') {
-        onResolved(result.candidates[0].companyId)
+        showMatchedCandidate(result.candidates[0])
         return
       }
       setCandidates(result.candidates.slice(0, 3))
@@ -94,11 +124,18 @@ export function SingleCompanyForm({ onResolved, initialValues }: Props) {
   async function handleConfirm(companyId: string) {
     if (!resolutionInputId) return
     try {
+      clearAutoOpenTimer()
       await trpc.company.confirmMatch.mutate({ resolutionInputId, companyId })
       onResolved(companyId)
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Confirmation failed')
     }
+  }
+
+  function handleViewMatchedCompany() {
+    if (!matchedCandidate) return
+    clearAutoOpenTimer()
+    onResolved(matchedCandidate.companyId)
   }
 
   return (
@@ -206,6 +243,37 @@ export function SingleCompanyForm({ onResolved, initialValues }: Props) {
       {error && (
         <div role="alert" className="mt-4 p-3 bg-red-50 border border-red-200 rounded-lg text-sm text-red-700">
           {error}
+        </div>
+      )}
+
+      {matchedCandidate && (
+        <div className="mt-6 rounded-xl border border-teal-200 bg-teal-50/70 p-4">
+          <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
+            <div>
+              <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-teal-700">
+                Confident Match Found
+              </p>
+              <div className="mt-1 font-medium text-app-text text-base">{matchedCandidate.displayName}</div>
+              {matchedCandidate.domain && (
+                <div className="text-sm text-stone-500 mt-0.5">{matchedCandidate.domain}</div>
+              )}
+              <div className="flex gap-2 mt-2 flex-wrap">
+                <TierBadge tier={matchedCandidate.matchTier} />
+                <span className="text-xs text-stone-500">{matchedCandidate.confidenceScore}% confidence</span>
+                <span className="text-xs text-stone-500">via {matchedCandidate.sourceProviders.join(', ')}</span>
+              </div>
+              <p className="mt-2 text-sm text-stone-600">
+                Company detail opens automatically in a moment, or you can continue now.
+              </p>
+            </div>
+            <button
+              type="button"
+              onClick={handleViewMatchedCompany}
+              className="shrink-0 rounded-lg bg-app-accent px-4 py-2 text-sm font-semibold text-white transition-colors hover:bg-app-accent-dim"
+            >
+              View Company Details
+            </button>
+          </div>
         </div>
       )}
 

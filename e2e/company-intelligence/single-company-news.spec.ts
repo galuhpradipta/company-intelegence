@@ -188,6 +188,12 @@ test('single-company resolve opens the company detail view and shows address plu
   await page.getByPlaceholder('1 Apple Park Way').fill('1 Apple Park Way')
   await page.getByRole('button', { name: 'Resolve Company' }).click()
 
+  await expect(page.getByText('Confident Match Found')).toBeVisible()
+  await expect(page.getByText('Apple Inc.')).toBeVisible()
+  await expect(page.getByRole('button', { name: 'View Company Details' })).toBeVisible()
+
+  await page.getByRole('button', { name: 'View Company Details' }).click()
+
   await expect(page).toHaveURL(new RegExp(`/company/${COMPANY_ID}$`))
   await expect(page.getByRole('heading', { name: 'Apple Inc.' })).toBeVisible()
   await expect(page.getByText('161,000')).toBeVisible()
