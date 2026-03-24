@@ -22,6 +22,7 @@ dist
 # Editor
 .vscode
 .idea
+.DS_Store
 
 # Playwright
 /test-results/
