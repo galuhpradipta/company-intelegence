@@ -230,10 +230,11 @@ E2E_USE_DOCKER=1
 ## Verification Snapshot
 
 - Verified on March 24, 2026: `pnpm build` passes.
-- Verified on March 24, 2026: `pnpm test -- --run tests/unit server/routes/relevancy.test.ts` passes with `61` tests across `12` files.
-- Verified on March 24, 2026: `pnpm test:e2e` passes with `3` Company Intelligence browser tests.
-- Active browser-test coverage under `e2e/company-intelligence/` covers the input smoke path, single-company resolve -> detail -> news, and CSV upload -> progress -> result actions.
-- A full integration Playwright path is available via `pnpm test:e2e:integration` and `pnpm test:e2e:integration:docker`.
+- Verified on March 24, 2026: `pnpm test` passes with `97` tests across `21` files.
+- Verified on March 24, 2026: `pnpm test:e2e` passes with `7` Company Intelligence browser tests.
+- Verified on March 24, 2026: `pnpm test:e2e:integration:docker` passes with `6` real-stack integration tests.
+- Default test commands run with mocked third-party providers enabled, so regression runs do not burn external API or OpenAI credits.
+- Active browser coverage under `e2e/company-intelligence/` now covers smoke, confident/suggested/not-found single-company flows, scored news with low-relevance reveal, CSV validation, CSV progress/results actions, and Docker-backed real-backend integration flows.
 
 ## Architecture
 
