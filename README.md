@@ -328,7 +328,7 @@ If you need to trace the app quickly, start here:
 - Database schema: `server/db/schema/`
 - Provider registration: `server/providers/company/registry.ts` and `server/providers/news/`
 
-### Schema Design
+### Why I Chose This Schema
 
 Nine PostgreSQL tables:
 
@@ -342,9 +342,17 @@ Nine PostgreSQL tables:
 - `company_articles` — join table linking companies to articles with search context
 - `article_relevancy_scores` — LLM scores with model metadata, category, and explanation
 
-**Why this schema**: The `company_source_records` table preserves full raw payloads from every provider, allowing the pipeline to re-derive canonical fields if provider data quality improves or precedence rules change. `company_matches` separates ranked suggestions from canonical company records, which is important because the same company can appear as a candidate for many inputs.
+The schema is split between canonical company data, raw source evidence, ranked match suggestions, and article-level enrichment data.
 
-### Provider Abstraction
+That separation matters for three reasons:
+
+- `company_source_records` preserves full raw payloads from every provider, so the app can revisit or re-merge fields later if source quality improves
+- `company_matches` keeps ranked suggestions separate from the canonical `companies` table, which avoids treating every candidate as a confirmed company record
+- `company_identifiers` gives the app a stable place to store durable external IDs such as `cik`, `ticker`, provider record IDs, and company numbers so repeated resolutions can reuse the same canonical company
+
+This design made the core pipeline easier to reason about and made it possible to keep both the final answer and the supporting evidence.
+
+### How the Provider Abstraction Works
 
 Every company data source implements one interface:
 
@@ -359,6 +367,8 @@ interface CompanyProvider {
 Deterministic providers are composed through `server/providers/company/registry.ts`, so the resolution orchestrator stays focused on flow control and persistence instead of provider wiring.
 
 To add a new provider: create one file in `server/providers/company/`, implement the interface, and register it in `server/providers/company/registry.ts`.
+
+That means adding a new source does not require rewriting the orchestrator, scoring logic, or persistence model. The new provider only needs to translate its external response into the shared candidate shape.
 
 ### Confidence Scoring
 
@@ -384,9 +394,11 @@ finalScore = Math.min(100, Math.round(rawTotal * reliabilityFactor))
 
 **Tiers**: ≥85 = Confident, 50–84 = Suggested, <50 = Not Found.
 
-### Entity Resolution / Conflict Handling
+### How Entity Resolution Handles Conflicts Between Sources
 
-Candidates from different providers are clustered by shared domain (exact match) or high name token overlap (Jaccard ≥ 0.8). Within a cluster, fields are merged using provider precedence:
+Candidates from different providers are clustered by shared domain (exact match) or high name token overlap (Jaccard ≥ 0.8). The orchestrator then tries to reuse an existing canonical company by stable identifiers first, then provider record IDs, then normalized domain before creating a new company row.
+
+Within a cluster, fields are merged using provider precedence:
 
 - Legal name: registry > firmographic > scraping > AI fallback
 - Domain: user-provided > firmographic > scraping > AI fallback
@@ -397,7 +409,7 @@ All raw payloads are preserved in `company_source_records` regardless of which v
 
 Durable external identifiers exposed by providers are persisted in `company_identifiers`. Today that includes SEC `cik`/`ticker`, People Data Labs IDs, and OpenCorporates company numbers when available.
 
-### Relevancy Scoring Prompts
+### How Relevancy Scoring Prompts Are Structured and Why
 
 Each article is scored with company context injected into the prompt:
 
@@ -411,11 +423,13 @@ Output schema (strict Structured Output):
 - `category`: enum (financial_performance | litigation_legal | leadership_change | operational_risk | market_expansion | industry_sector)
 - `explanation`: string, max 160 chars
 
+The prompt is structured this way so the model judges the article against the company’s actual business context instead of scoring the article in isolation. The output is intentionally narrow: one score, one category, and one short explanation. That keeps the UI simple, reduces parsing risk, and makes the results easier to compare across articles.
+
 Articles below 30 are stored but hidden in the default view. Scoring runs with concurrency 5 and retries transient failures up to 2 times with exponential backoff.
 
-## Current Limitations and Improvement Path
+## Trade-offs and What I'd Do Differently with More Time
 
-These are the main places where the current v1 implementation is intentionally lighter than the idealized production system described in the PRD.
+These are the main places where the current v1 implementation is intentionally lighter than the idealized production system described in the PRD, and the changes I would make next if this moved beyond a trial build.
 
 | Current limitation | Why it matters | How to improve it |
 |---|---|---|

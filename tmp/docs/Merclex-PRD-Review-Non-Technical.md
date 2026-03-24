@@ -209,3 +209,61 @@ This section is addressed well. The app does not just collect articles; it score
 ### Non-Technical Takeaway
 
 This section is in strong shape. The app does not stop at collecting raw news articles; it adds structured relevance scoring, categories, and explanations, which is the part that makes the output more useful for actual business review.
+
+## 4. GUI Requirements
+
+Overall answer from me: `Yes`
+
+This section is addressed well. The interface is functional, clear, and demonstrates the full pipeline from input through resolution, batch review, and news review. It is not trying to be a polished design exercise, but it does what the PRD asked for and supports the demo effectively.
+
+## 4.1 Input View
+
+Overall answer from me: `Yes`
+
+The input view matches the PRD closely. A user can switch between single-company entry and CSV upload, fill in the requested data, preview uploads, and see clear validation or failure states before processing.
+
+| Point | Status | Plain-English answer | Proof | Anything still missing |
+|---|---|---|---|---|
+| Tab or toggle: “Single Company” vs. “CSV Upload” | Yes | The user can clearly choose between the two input modes from the same starting page. | The switch between the two modes is implemented on the input screen in `src/routes/InputPage.tsx`. | Nothing major for this part. |
+| Single company form with all fields, “Resolve” button | Yes | The single-company path includes the expected company fields and a clear action to start resolution. | The form fields and resolve action are implemented in `src/features/company-input/SingleCompanyForm.tsx`. | Nothing major for this part. |
+| CSV upload with drag-and-drop zone, template download link, preview table | Yes | The CSV path supports drag-and-drop, provides a template, and shows a preview before processing. | The upload area, template link, and preview table are implemented in `src/features/csv-upload/CsvUpload.tsx`. | Nothing major for this part. |
+| Clear error states for validation failures | Yes | The user gets understandable feedback when the form or CSV upload has a problem. | Error and validation states are shown in both `src/features/company-input/SingleCompanyForm.tsx` and `src/features/csv-upload/CsvUpload.tsx`. | Nothing major for this part. |
+
+### Non-Technical Takeaway
+
+The input experience is easy to follow and already works well for demo use. A user can start with one company or many companies, and the app makes it clear what to do next in both cases.
+
+## 4.2 Results Dashboard
+
+Overall answer from me: `Yes`
+
+The results dashboard covers the main review workflow well. It gives a fast summary of batch outcomes, shows which companies were matched confidently, surfaces suggested candidates for manual review, and gives a retry path for the ones that were not found.
+
+| Point | Status | Plain-English answer | Proof | Anything still missing |
+|---|---|---|---|---|
+| Three-column summary bar: Confident, Suggested, Not Found | Yes | The app shows the three requested outcome groups with counts so the user can understand the batch at a glance. | The summary bar is rendered in `src/routes/ResultsPage.tsx`. | Nothing major for this part. |
+| Clickable company cards with name, domain, confidence score, tier badge, source providers used | Yes | The result cards give the main information a user needs to judge the match and open the company detail view. | The result cards and company detail links are implemented in `src/routes/ResultsPage.tsx`. | Nothing major for this part. |
+| For suggested matches: show top 3 candidates with “Confirm” button | Yes | Suggested matches are presented as a short ranked list with a clear confirm action. | The top-candidate review flow is implemented in `src/routes/ResultsPage.tsx`, and confirmation is wired through the company confirmation flow. | Nothing major for this part. |
+| For not found: show “Retry with different inputs” option | Yes | The user gets a clear path to retry instead of being left at a dead end. | The retry action is shown for not-found rows in `src/routes/ResultsPage.tsx`, and the same idea is also reflected in the single-company input flow. | Nothing major for this part. |
+
+### Non-Technical Takeaway
+
+The dashboard does the job the PRD expects. It quickly separates easy wins from cases that need manual review, which is the core purpose of this screen.
+
+## 4.3 Company Detail + News View
+
+Overall answer from me: `Yes`
+
+The company detail and news view is one of the clearest parts of the app. Once a company is opened, the user can see both the company profile and the relevance-ranked news in one place, which makes the result feel complete and easy to explain in a demo.
+
+| Point | Status | Plain-English answer | Proof | Anything still missing |
+|---|---|---|---|---|
+| Company profile card: name, domain, industry, employee count, address, data sources | Yes | The company detail page includes the profile information the PRD asks for. | The profile card is implemented in `src/routes/CompanyDetailPage.tsx`. | Nothing major for this part. |
+| News feed below, sorted by relevancy score (highest first) | Yes | The news list is intentionally ranked by business relevance so the most useful articles appear first. | The UI is rendered in `src/routes/CompanyDetailPage.tsx`, and the ranking is provided by the backend news query flow. | Nothing major for this part. |
+| Each news card shows title, source, date, relevancy score, category, explanation, and original article link | Yes | The article cards include the full set of fields needed to understand why an article matters and to open the original source. | The news-card layout is implemented in `src/routes/CompanyDetailPage.tsx`. | Nothing major for this part. |
+| “Show all” toggle for articles below the 30-point threshold | Yes | The user can reveal lower-scoring articles when needed instead of losing access to them. | The filter and toggle behavior is implemented across `server/services/news-ingestion/company-news.ts` and `src/routes/CompanyDetailPage.tsx`. | Nothing major for this part. |
+| Empty state for companies with no news | Yes | The app handles the no-news case cleanly and does not leave the page blank. | The empty-news state is implemented in `src/routes/CompanyDetailPage.tsx`. | Nothing major for this part. |
+
+### Non-Technical Takeaway
+
+This part of the UI is demo-ready. It shows the company profile, explains why articles were ranked the way they were, and gives a clear path to the source material, which makes the output feel credible to a reviewer.
