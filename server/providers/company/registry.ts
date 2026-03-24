@@ -6,11 +6,18 @@ import { PeopleDataLabsProvider } from './people-data-labs.js'
 import { SecEdgarProvider } from './sec-edgar.js'
 import { env } from '../../env.js'
 
-const LIVE_DETERMINISTIC_PROVIDERS: CompanyProvider[] = [
-  new PeopleDataLabsProvider(),
-  new SecEdgarProvider(),
-  new OpenCorporatesProvider(),
-]
+function createLiveDeterministicProviders(): CompanyProvider[] {
+  const providers: CompanyProvider[] = [
+    new PeopleDataLabsProvider(),
+    new SecEdgarProvider(),
+  ]
+
+  if (hasConfiguredValue(env.OPENCORPORATES_API_KEY)) {
+    providers.push(new OpenCorporatesProvider())
+  }
+
+  return providers
+}
 
 const LIVE_FALLBACK_PROVIDER = new AiFallbackProvider()
 
@@ -25,7 +32,7 @@ const MOCK_FALLBACK_PROVIDER = new FixtureCompanyProvider('ai_fallback', 0.6)
 export function getDeterministicCompanyProviders(): CompanyProvider[] {
   return env.COMPANY_INTELLIGENCE_MOCK_EXTERNAL_PROVIDERS
     ? MOCK_DETERMINISTIC_PROVIDERS
-    : LIVE_DETERMINISTIC_PROVIDERS
+    : createLiveDeterministicProviders()
 }
 
 export function getFallbackCompanyProvider(): CompanyProvider {
@@ -39,4 +46,8 @@ export function getCompanyProviderByName(name: string): CompanyProvider | undefi
     ...getDeterministicCompanyProviders(),
     getFallbackCompanyProvider(),
   ].find((provider) => provider.name === name)
+}
+
+function hasConfiguredValue(value: string | undefined): boolean {
+  return typeof value === 'string' && value.trim().length > 0
 }

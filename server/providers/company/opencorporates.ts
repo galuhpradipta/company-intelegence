@@ -7,11 +7,14 @@ export class OpenCorporatesProvider implements CompanyProvider {
 
   async search(input: NormalizedInput): Promise<CandidateCompany[]> {
     const apiToken = env.OPENCORPORATES_API_KEY
+    if (!apiToken) {
+      return []
+    }
 
     const params = new URLSearchParams({
       q: input.companyName,
       jurisdiction_code: 'us', // v1 US-first
-      ...(apiToken ? { api_token: apiToken } : {}),
+      api_token: apiToken,
     })
 
     const url = `https://api.opencorporates.com/v0.4/companies/search?${params}`

@@ -8,7 +8,6 @@ export class NewsApiProvider implements NewsProvider {
   async fetchNews(query: string, fromDate: Date, toDate: Date): Promise<NewsArticle[]> {
     const apiKey = env.NEWS_API_KEY
     if (!apiKey) {
-      console.warn('[NewsAPI] NEWS_API_KEY not set, skipping provider')
       return []
     }
 
