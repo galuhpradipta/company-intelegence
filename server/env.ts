@@ -5,6 +5,17 @@ const booleanFlag = z
   .optional()
   .transform((value) => value === '1' || value === 'true')
 
+function normalizeTestEnv(rawEnv: NodeJS.ProcessEnv) {
+  const normalizedEnv = { ...rawEnv }
+
+  if (normalizedEnv.NODE_ENV === 'test') {
+    normalizedEnv.COMPANY_INTELLIGENCE_MOCK_EXTERNAL_PROVIDERS ||= '1'
+    normalizedEnv.OPENAI_API_KEY ||= 'test-openai-key'
+  }
+
+  return normalizedEnv
+}
+
 const envSchema = z.object({
   DATABASE_URL: z.string().min(1),
   OPENAI_API_KEY: z.string().min(1),
@@ -23,4 +34,4 @@ const envSchema = z.object({
   COMPANY_INTELLIGENCE_MOCK_EXTERNAL_PROVIDERS: booleanFlag,
 })
 
-export const env = envSchema.parse(process.env)
+export const env = envSchema.parse(normalizeTestEnv(process.env))
