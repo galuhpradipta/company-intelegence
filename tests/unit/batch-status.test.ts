@@ -23,6 +23,10 @@ describe('buildBatchStatusPayload', () => {
       items: [
         {
           rowNumber: 1,
+          rawInput: {
+            company_name: 'Acme Corp',
+            domain: 'acme.com',
+          },
           status: 'completed',
           resolutionInputId: 'input-1',
           resultCompanyId: 'company-1',
@@ -30,6 +34,11 @@ describe('buildBatchStatusPayload', () => {
         },
         {
           rowNumber: 2,
+          rawInput: {
+            company_name: 'Beta Labs',
+            address: '10 Market Street',
+            city: 'San Francisco',
+          },
           status: 'completed',
           resolutionInputId: 'input-2',
           resultCompanyId: null,
@@ -37,6 +46,10 @@ describe('buildBatchStatusPayload', () => {
         },
         {
           rowNumber: 3,
+          rawInput: {
+            company_name: 'Gamma Systems',
+            industry: 'Robotics',
+          },
           status: 'completed',
           resolutionInputId: 'input-3',
           resultCompanyId: null,
@@ -44,6 +57,9 @@ describe('buildBatchStatusPayload', () => {
         },
         {
           rowNumber: 4,
+          rawInput: {
+            company_name: 'Delta Robotics',
+          },
           status: 'failed',
           resolutionInputId: null,
           resultCompanyId: null,
@@ -178,6 +194,9 @@ describe('buildBatchStatusPayload', () => {
       status: 'failed',
       matchTier: null,
       errorMessage: 'provider timeout',
+      submittedInput: {
+        companyName: 'Delta Robotics',
+      },
     })
   })
 })

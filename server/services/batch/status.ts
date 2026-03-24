@@ -9,6 +9,7 @@ import {
   resolutionInputs,
 } from '../../db/schema/index.js'
 import { toMatchTier } from '../company-resolution/index.js'
+import { ensureBatchProcessing } from './batch-processor.js'
 
 interface SubmittedInput {
   companyName: string
@@ -52,6 +53,7 @@ interface BatchStatusBuildRecord {
   }
   items: Array<{
     rowNumber: number
+    rawInput: unknown
     status: string
     resolutionInputId: string | null
     resultCompanyId: string | null
@@ -86,6 +88,10 @@ export async function getBatchStatus(batchId: string) {
 
   if (!batch) {
     throw new Error('Batch not found')
+  }
+
+  if ((batch.status !== 'completed' && batch.status !== 'failed') || batch.processedRows < batch.totalRows) {
+    void ensureBatchProcessing(batchId)
   }
 
   const items = await db.query.batchUploadItems.findMany({
@@ -137,6 +143,7 @@ export async function getBatchStatus(batchId: string) {
     },
     items: items.map((item) => ({
       rowNumber: item.rowNumber,
+      rawInput: item.rawInput,
       status: item.status,
       resolutionInputId: item.resolutionInputId ?? null,
       resultCompanyId: item.resultCompanyId ?? null,
@@ -187,7 +194,7 @@ export function buildBatchStatusPayload(records: BatchStatusBuildRecord) {
 
   const detailedItems: BatchStatusItem[] = records.items.map((item) => {
     const inputRecord = item.resolutionInputId ? inputById.get(item.resolutionInputId) : undefined
-    const submittedInput = toSubmittedInput(inputRecord?.rawInput)
+    const submittedInput = toSubmittedInput(inputRecord?.rawInput ?? item.rawInput)
     const matches = item.resolutionInputId
       ? matchesByResolutionInputId.get(item.resolutionInputId) ?? []
       : []
@@ -251,7 +258,7 @@ function toSubmittedInput(rawInput: unknown): SubmittedInput | null {
   if (!rawInput || typeof rawInput !== 'object') return null
 
   const record = rawInput as Record<string, unknown>
-  const companyName = typeof record.companyName === 'string' ? record.companyName : null
+  const companyName = toOptionalString(record.companyName) ?? toOptionalString(record.company_name) ?? null
 
   if (!companyName) return null
 
@@ -267,5 +274,5 @@ function toSubmittedInput(rawInput: unknown): SubmittedInput | null {
 }
 
 function toOptionalString(value: unknown): string | undefined {
-  return typeof value === 'string' && value.trim() ? value : undefined
+  return typeof value === 'string' && value.trim() ? value.trim() : undefined
 }

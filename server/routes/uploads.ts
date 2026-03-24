@@ -1,7 +1,7 @@
 import { Hono, type Context } from 'hono'
 import { HTTPException } from 'hono/http-exception'
 import { parseCsv } from '../services/batch/index.js'
-import { createBatch, processBatch } from '../services/batch/index.js'
+import { createBatch, ensureBatchProcessing } from '../services/batch/index.js'
 
 export const uploadsRoute = new Hono()
 
@@ -30,10 +30,7 @@ uploadsRoute.post('/resolve-batch', async (c) => {
 
   const batchId = await createBatch(filename, parseResult.rows)
 
-  // Start processing in background (in-process, non-blocking)
-  processBatch(batchId, parseResult.rows).catch((err) =>
-    console.error(`[Batch ${batchId}] Processing error:`, err)
-  )
+  void ensureBatchProcessing(batchId)
 
   return c.json({
     batchId,

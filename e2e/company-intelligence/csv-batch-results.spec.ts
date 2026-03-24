@@ -264,7 +264,7 @@ test('csv upload previews rows, polls progress, and supports confirm plus retry 
   })
 
   await page.goto('/')
-  await page.getByRole('button', { name: 'CSV Upload' }).click()
+  await page.getByRole('tab', { name: 'CSV Upload' }).click()
 
   await page.locator('input[type="file"]').setInputFiles({
     name: 'companies.csv',
@@ -289,17 +289,17 @@ test('csv upload previews rows, polls progress, and supports confirm plus retry 
   await page.getByRole('button', { name: 'Start Processing' }).click()
 
   await expect(page).toHaveURL(new RegExp(`/results/${BATCH_ID}$`))
-  await expect(page.getByText('1 / 3 processed')).toBeVisible()
-  await expect(page.getByText('3 / 3 processed')).toBeVisible({ timeout: 7000 })
-  await expect(page.getByText('Top 3 candidates')).toBeVisible()
+  await expect(page.getByText('1 of 3 rows processed')).toBeVisible()
+  await expect(page.getByText('3 of 3 rows processed')).toBeVisible({ timeout: 7000 })
+  await expect(page.getByText('Top candidates')).toBeVisible()
 
-  await page.getByRole('button', { name: 'Confirm' }).first().click()
+  await page.getByRole('button', { name: /Confirm / }).first().click()
 
   await expect.poll(() => confirmCalls).toBe(1)
-  await expect(page.getByRole('button', { name: 'Selected' })).toBeVisible()
-  await expect(page.getByRole('link', { name: 'Retry with different inputs' })).toBeVisible()
+  await expect(page.getByText('✓ Selected')).toBeVisible()
+  await expect(page.getByRole('link', { name: /Retry/ })).toBeVisible()
 
-  await page.getByRole('link', { name: 'Retry with different inputs' }).click()
+  await page.getByRole('link', { name: /Retry/ }).click()
 
   await expect(page).toHaveURL(/tab=single/)
   await expect(page.getByPlaceholder('e.g. Apple Inc.')).toHaveValue('Gamma Systems')
