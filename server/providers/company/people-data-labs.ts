@@ -43,6 +43,8 @@ export class PeopleDataLabsProvider implements CompanyProvider {
     const data = await res.json() as Record<string, unknown>
     if (!data.id && !data.name) return []
 
+    const location = data.location as Record<string, unknown> | undefined
+
     return [{
       providerName: this.name,
       providerRecordId: data.id as string | undefined,
@@ -52,9 +54,15 @@ export class PeopleDataLabsProvider implements CompanyProvider {
       industry: data.industry as string | undefined,
       employeeCount:
         typeof data.employee_count === 'number' ? data.employee_count : undefined,
-      hqCity: (data.location as Record<string, string> | undefined)?.locality,
-      hqState: (data.location as Record<string, string> | undefined)?.region,
-      hqCountry: (data.location as Record<string, string> | undefined)?.country,
+      hqAddress: firstString(
+        location?.street_address,
+        location?.address_line_1,
+        location?.address_line1,
+        data.street_address,
+      ),
+      hqCity: location?.locality as string | undefined,
+      hqState: location?.region as string | undefined,
+      hqCountry: location?.country as string | undefined,
       identifiers: data.id
         ? [{
           identifierType: 'people_data_labs_id',
@@ -65,4 +73,13 @@ export class PeopleDataLabsProvider implements CompanyProvider {
       rawPayload: data,
     }]
   }
+}
+
+function firstString(...values: unknown[]): string | undefined {
+  for (const value of values) {
+    if (typeof value === 'string' && value.trim()) {
+      return value.trim()
+    }
+  }
+  return undefined
 }

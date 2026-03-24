@@ -35,6 +35,7 @@ describe('SecEdgarProvider', () => {
           sicDescription: 'Electronic Computers',
           addresses: {
             business: {
+              street1: '1 Apple Park Way',
               city: 'CUPERTINO',
               stateOrCountry: 'CA',
             },
@@ -63,6 +64,7 @@ describe('SecEdgarProvider', () => {
         displayName: 'Apple Inc.',
         legalName: 'Apple Inc.',
         industry: 'Electronic Computers',
+        hqAddress: '1 Apple Park Way',
         hqCity: 'CUPERTINO',
         hqState: 'CA',
         hqCountry: 'US',

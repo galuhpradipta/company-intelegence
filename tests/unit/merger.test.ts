@@ -73,6 +73,28 @@ describe('clusterCandidates', () => {
     expect(merged[0].employeeCount).toBe(8000) // firmographic wins
   })
 
+  it('prefers a structured address from a higher-rank provider', () => {
+    const candidates: CandidateCompany[] = [
+      {
+        providerName: 'ai_fallback',
+        displayName: 'Stripe',
+        domain: 'stripe.com',
+        hqAddress: 'Unknown address',
+        rawPayload: {},
+      },
+      {
+        providerName: 'opencorporates',
+        displayName: 'Stripe, Inc.',
+        domain: 'stripe.com',
+        hqAddress: '354 Oyster Point Blvd',
+        rawPayload: {},
+      },
+    ]
+
+    const merged = clusterCandidates(candidates)
+    expect(merged[0].hqAddress).toBe('354 Oyster Point Blvd')
+  })
+
   it('keeps separate clusters for distinct companies', () => {
     const candidates: CandidateCompany[] = [
       {

@@ -47,6 +47,12 @@ export class OpenCorporatesProvider implements CompanyProvider {
           legalName: r.name as string | undefined,
           domain: undefined, // OC does not provide domain directly
           industry: r.industry_codes as string | undefined,
+          hqAddress: firstString(
+            address?.street_address,
+            address?.address_line_1,
+            address?.address_line1,
+            r.registered_address_in_full,
+          ),
           hqCity: address?.locality as string | undefined,
           hqState: address?.region as string | undefined,
           hqCountry: address?.country as string | undefined,
@@ -65,4 +71,13 @@ export class OpenCorporatesProvider implements CompanyProvider {
       return []
     }
   }
+}
+
+function firstString(...values: unknown[]): string | undefined {
+  for (const value of values) {
+    if (typeof value === 'string' && value.trim()) {
+      return value.trim()
+    }
+  }
+  return undefined
 }

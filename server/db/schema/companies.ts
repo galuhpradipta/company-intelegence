@@ -7,6 +7,7 @@ export const companies = pgTable('companies', {
   domain: text('domain'),
   industry: text('industry'),
   employeeCount: integer('employee_count'),
+  hqAddress: text('hq_address'),
   hqCity: text('hq_city'),
   hqState: text('hq_state'),
   hqCountry: text('hq_country').default('US'),

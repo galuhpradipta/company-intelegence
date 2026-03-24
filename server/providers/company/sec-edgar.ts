@@ -53,6 +53,8 @@ interface SecSubmission {
   tickers?: string[]
   addresses?: {
     business?: {
+      street1?: string | null
+      street2?: string | null
       city?: string | null
       stateOrCountry?: string | null
       zipCode?: string | null
@@ -185,6 +187,10 @@ function toCandidate(submission: SecSubmission, entry: SecTickerEntry): Candidat
     legalName: submission.name ?? entry.title,
     domain: submission.website || undefined,
     industry: submission.sicDescription || undefined,
+    hqAddress: joinAddressLines(
+      submission.addresses?.business?.street1,
+      submission.addresses?.business?.street2,
+    ),
     hqCity: submission.addresses?.business?.city ?? undefined,
     hqState: submission.addresses?.business?.stateOrCountry ?? undefined,
     hqCountry: 'US',
@@ -200,4 +206,12 @@ function toCandidate(submission: SecSubmission, entry: SecTickerEntry): Candidat
       formerNames: submission.formerNames,
     },
   }
+}
+
+function joinAddressLines(...values: Array<string | null | undefined>): string | undefined {
+  const normalized = values
+    .filter((value): value is string => Boolean(value && value.trim()))
+    .map((value) => value.trim())
+
+  return normalized.length > 0 ? normalized.join(', ') : undefined
 }

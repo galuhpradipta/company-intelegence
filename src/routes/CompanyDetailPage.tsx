@@ -130,6 +130,8 @@ export function CompanyDetailPage() {
   }
 
   const articles = newsData?.articles ?? []
+  const totalArticles = newsData?.meta?.totalArticles ?? articles.length
+  const hasFilteredArticles = !showAll && totalArticles > 0 && articles.length === 0
   const uniqueProviders = [...new Set(company.sourceRecords.map((s) => s.provider))]
   const confidenceColor =
     company.confidenceScore >= 80 ? 'text-emerald-600' :
@@ -203,11 +205,11 @@ export function CompanyDetailPage() {
                 <div className="text-stone-700 font-medium text-sm">{company.employeeCount.toLocaleString()}</div>
               </div>
             )}
-            {(company.hqCity || company.hqCountry) && (
+            {(company.hqAddress || company.hqCity || company.hqCountry) && (
               <div>
-                <div className="text-xs text-stone-400 font-semibold uppercase tracking-wider mb-1">HQ</div>
+                <div className="text-xs text-stone-400 font-semibold uppercase tracking-wider mb-1">Address</div>
                 <div className="text-stone-700 font-medium text-sm">
-                  {[company.hqCity, company.hqState, company.hqCountry].filter(Boolean).join(', ')}
+                  {[company.hqAddress, company.hqCity, company.hqState, company.hqCountry].filter(Boolean).join(', ')}
                 </div>
               </div>
             )}
@@ -237,7 +239,7 @@ export function CompanyDetailPage() {
               <p className="text-xs text-stone-400 mt-0.5">{articles.length} article{articles.length !== 1 ? 's' : ''} found</p>
             )}
           </div>
-          {articles.length > 0 && (
+          {totalArticles > 0 && (
             <label className="flex items-center gap-2 text-sm text-stone-500 shrink-0 cursor-pointer">
               <input
                 type="checkbox"
@@ -276,7 +278,19 @@ export function CompanyDetailPage() {
           </div>
         )}
 
-        {articles.length === 0 && !fetchingNews && (
+        {hasFilteredArticles && !fetchingNews && (
+          <div className="bg-white rounded-xl border border-stone-200 shadow-sm p-10 text-center">
+            <p className="text-stone-500 text-sm font-medium">All fetched articles are hidden by the low-relevance filter.</p>
+            <button
+              onClick={() => setShowAll(true)}
+              className="mt-4 text-sm font-semibold text-app-accent hover:underline transition-colors"
+            >
+              Show all articles →
+            </button>
+          </div>
+        )}
+
+        {totalArticles === 0 && articles.length === 0 && !fetchingNews && (
           <div className="bg-white rounded-xl border border-stone-200 shadow-sm p-10 text-center">
             <div className="text-stone-300 text-3xl mb-3">📰</div>
             <p className="text-stone-500 text-sm font-medium">No news articles found.</p>

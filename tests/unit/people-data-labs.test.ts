@@ -30,6 +30,7 @@ describe('PeopleDataLabsProvider', () => {
         industry: 'consumer electronics',
         employee_count: 161000,
         location: {
+          street_address: '1 Apple Park Way',
           locality: 'Cupertino',
           region: 'CA',
           country: 'US',
@@ -69,6 +70,7 @@ describe('PeopleDataLabsProvider', () => {
         domain: 'apple.com',
         industry: 'consumer electronics',
         employeeCount: 161000,
+        hqAddress: '1 Apple Park Way',
         hqCity: 'Cupertino',
         hqState: 'CA',
         hqCountry: 'US',

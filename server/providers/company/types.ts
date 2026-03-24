@@ -34,6 +34,7 @@ export interface CandidateCompany {
   domain?: string
   industry?: string
   employeeCount?: number
+  hqAddress?: string
   hqCity?: string
   hqState?: string
   hqCountry?: string

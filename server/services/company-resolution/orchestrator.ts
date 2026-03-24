@@ -97,6 +97,7 @@ export async function resolveCompany(
         legalName: candidate.legalName,
         domain: candidate.domain,
         industry: candidate.industry,
+        hqAddress: candidate.hqAddress,
         hqCity: candidate.hqCity,
         hqState: candidate.hqState,
         hqCountry: candidate.hqCountry,
@@ -120,12 +121,14 @@ export async function resolveCompany(
     const { candidate, breakdown } = top[i]
     const tier = toMatchTier(breakdown.finalScore)
     const normalizedDomain = candidate.domain ? normalizeDomain(candidate.domain) : null
+    const resolvedAddress = candidate.hqAddress ?? input.address
     const companyValues = {
       displayName: candidate.displayName,
       legalName: candidate.legalName,
       domain: normalizedDomain,
       industry: candidate.industry,
       employeeCount: candidate.employeeCount,
+      hqAddress: resolvedAddress,
       hqCity: candidate.hqCity,
       hqState: candidate.hqState,
       hqCountry: candidate.hqCountry ?? 'US',
@@ -142,6 +145,7 @@ export async function resolveCompany(
           legalName: companies.legalName,
           industry: companies.industry,
           employeeCount: companies.employeeCount,
+          hqAddress: companies.hqAddress,
           hqCity: companies.hqCity,
           hqState: companies.hqState,
           hqCountry: companies.hqCountry,
@@ -160,6 +164,7 @@ export async function resolveCompany(
             domain: normalizedDomain,
             industry: candidate.industry ?? existingCompany.industry,
             employeeCount: candidate.employeeCount ?? existingCompany.employeeCount,
+            hqAddress: resolvedAddress ?? existingCompany.hqAddress,
             hqCity: candidate.hqCity ?? existingCompany.hqCity,
             hqState: candidate.hqState ?? existingCompany.hqState,
             hqCountry: candidate.hqCountry ?? existingCompany.hqCountry ?? 'US',

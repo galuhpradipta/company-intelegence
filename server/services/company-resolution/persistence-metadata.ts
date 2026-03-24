@@ -18,6 +18,7 @@ export function buildFieldConfidence(
   addField(fieldConfidence, 'domain', source.domain, reliabilityFactor)
   addField(fieldConfidence, 'industry', source.industry, reliabilityFactor)
   addField(fieldConfidence, 'employeeCount', source.employeeCount, reliabilityFactor)
+  addField(fieldConfidence, 'hqAddress', source.hqAddress, reliabilityFactor)
   addField(fieldConfidence, 'hqCity', source.hqCity, reliabilityFactor)
   addField(fieldConfidence, 'hqState', source.hqState, reliabilityFactor)
   addField(fieldConfidence, 'hqCountry', source.hqCountry, reliabilityFactor)

@@ -6,6 +6,7 @@ export interface MergedCandidate {
   domain?: string
   industry?: string
   employeeCount?: number
+  hqAddress?: string
   hqCity?: string
   hqState?: string
   hqCountry?: string
@@ -94,6 +95,10 @@ function mergeCandidates(sources: CandidateCompany[]): MergedCandidate {
     sources.find((s) => rank(s.providerName) >= 3 && s.employeeCount)?.employeeCount
     ?? best.employeeCount
 
+  const hqAddress =
+    sources.find((s) => rank(s.providerName) >= 3 && s.hqAddress)?.hqAddress
+    ?? sources.find((s) => s.hqAddress)?.hqAddress
+
   const hqCity = sources.find((s) => s.hqCity)?.hqCity
   const hqState = sources.find((s) => s.hqState)?.hqState
   const hqCountry = sources.find((s) => s.hqCountry)?.hqCountry
@@ -104,6 +109,7 @@ function mergeCandidates(sources: CandidateCompany[]): MergedCandidate {
     domain,
     industry,
     employeeCount,
+    hqAddress,
     hqCity,
     hqState,
     hqCountry,

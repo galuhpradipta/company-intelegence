@@ -16,6 +16,7 @@ test("single-company integration flow hits the real backend and isolated databas
   await expect(page.getByRole("heading", { name: "Apple Inc." })).toBeVisible();
   await expect(page.getByText("apple.com")).toBeVisible();
   await expect(page.getByText("161,000")).toBeVisible();
+  await expect(page.getByText("1 Apple Park Way, Cupertino, CA, US")).toBeVisible();
   await expect(page.getByText("Cupertino, CA, US")).toBeVisible();
   await expect(page.getByText("people data labs")).toBeVisible();
   await expect(page.getByText("sec edgar")).toBeVisible();
