@@ -234,7 +234,6 @@ E2E_USE_DOCKER=1
 - Verified on March 24, 2026: `pnpm test:e2e` passes with `3` Company Intelligence browser tests.
 - Active browser-test coverage under `e2e/company-intelligence/` covers the input smoke path, single-company resolve -> detail -> news, and CSV upload -> progress -> result actions.
 - A full integration Playwright path is available via `pnpm test:e2e:integration` and `pnpm test:e2e:integration:docker`.
-- Archived auth/notes template Playwright files live under `legacy/playwright-template/` and are not part of the trial submission.
 
 ## Architecture
 
