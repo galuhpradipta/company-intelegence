@@ -1,5 +1,6 @@
 import type { NewsProvider, NewsArticle } from './types.js'
 import { env } from '../../env.js'
+import { fetchWithBackoff } from './request-with-backoff.js'
 
 export class GNewsProvider implements NewsProvider {
   name = 'gnews'
@@ -24,9 +25,7 @@ export class GNewsProvider implements NewsProvider {
     const url = `https://gnews.io/api/v4/search?${params}`
 
     try {
-      const res = await fetch(url, {
-        signal: AbortSignal.timeout(env.PROVIDER_TIMEOUT_MS),
-      })
+      const res = await fetchWithBackoff('GNews', url, env.PROVIDER_TIMEOUT_MS)
 
       if (res.status === 401 || res.status === 403) {
         console.warn('[GNews] Auth failed. Check GNEWS_API_KEY.')

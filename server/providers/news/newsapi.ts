@@ -1,5 +1,6 @@
 import type { NewsProvider, NewsArticle } from './types.js'
 import { env } from '../../env.js'
+import { fetchWithBackoff } from './request-with-backoff.js'
 
 export class NewsApiProvider implements NewsProvider {
   name = 'newsapi'
@@ -24,9 +25,7 @@ export class NewsApiProvider implements NewsProvider {
     const url = `https://newsapi.org/v2/everything?${params}`
 
     try {
-      const res = await fetch(url, {
-        signal: AbortSignal.timeout(env.PROVIDER_TIMEOUT_MS),
-      })
+      const res = await fetchWithBackoff('NewsAPI', url, env.PROVIDER_TIMEOUT_MS)
 
       if (res.status === 401) {
         console.warn('[NewsAPI] Authentication failed. Check NEWS_API_KEY.')
