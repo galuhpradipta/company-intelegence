@@ -3,7 +3,7 @@ import { expect, test } from "@playwright/test";
 
 test("csv integration flow uses real backend batch processing with isolated database state", async ({ page }) => {
   await page.goto("/");
-  await page.getByRole("button", { name: "CSV Upload" }).click();
+  await page.getByRole("tab", { name: "CSV Upload" }).click();
 
   await page.locator('input[type="file"]').setInputFiles({
     name: "companies.csv",
@@ -25,14 +25,14 @@ test("csv integration flow uses real backend batch processing with isolated data
   await page.getByRole("button", { name: "Start Processing" }).click();
 
   await expect(page).toHaveURL(/\/results\/[0-9a-f-]+$/);
-  await expect(page.getByText("3 / 3 processed")).toBeVisible({ timeout: 12_000 });
+  await expect(page.getByText("3 of 3 rows processed")).toBeVisible({ timeout: 12_000 });
   await expect(page.getByText("Confident", { exact: true }).first()).toBeVisible();
   await expect(page.getByText("Suggested", { exact: true }).first()).toBeVisible();
   await expect(page.getByText("Not Found", { exact: true }).first()).toBeVisible();
   await expect(page.getByRole("heading", { name: "Acme Corp" })).toBeVisible();
   await expect(page.getByRole("heading", { name: "Beta Labs Inc." })).toBeVisible();
   await expect(page.getByRole("heading", { name: "Gamma Systems" })).toBeVisible();
-  await expect(page.getByText("Top 3 candidates")).toBeVisible();
-  await expect(page.getByRole("button", { name: "Selected" })).toBeVisible();
-  await expect(page.getByRole("link", { name: "Retry with different inputs" })).toBeVisible();
+  await expect(page.getByText("Top candidates")).toBeVisible();
+  await expect(page.getByRole("button", { name: "Confirm Beta Labs Inc." })).toBeDisabled();
+  await expect(page.getByRole("link", { name: "Retry →" })).toBeVisible();
 });
