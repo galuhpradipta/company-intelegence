@@ -103,7 +103,7 @@ This section is mostly addressed. The single-company flow is in good shape, and 
 | Required and optional CSV columns | Yes | The CSV flow is built around the required `company_name` field and supports the optional fields listed in the PRD. | CSV validation and parsing are handled through the upload and batch parsing flow in `server/routes/uploads.ts` and the batch services. | Nothing major for this part. |
 | Validate upload, show row count, missing fields, and preview first 5 rows | Yes | The app validates the CSV before processing and clearly shows counts, skipped rows, and a preview. | The preview and validation UI is in `src/features/csv-upload/CsvUpload.tsx`, and the preview endpoint is in `server/routes/uploads.ts`. | Nothing major for this part. |
 | Process companies in parallel with progress indicator | Yes | The app processes CSV rows in parallel and shows progress back to the user. | Batch concurrency is driven by `BATCH_CONCURRENCY` in `server/env.ts`, batch execution runs through `server/services/batch/batch-processor.ts`, and progress is shown in `src/routes/ResultsPage.tsx`. | Nothing major for this part. |
-| Handle at least 50 companies without timeout | Mostly | The app is designed to process larger batches and now supports resumable progress, but it still runs inside the main web process rather than a separate durable worker. | Batch execution and resume behavior are implemented in `server/services/batch/batch-processor.ts`, but the work still lives in the web app process. | This is the main remaining gap for this section. |
+| Handle at least 50 companies without timeout | Mostly | The current build now has a verified 50-row demo path, and it supports resumable progress. The reason I still mark this as `Mostly` is that the work still runs inside the main web process rather than a separate durable worker. | Batch execution and resume behavior are implemented in `server/services/batch/batch-processor.ts`, and the 50-row demo path is now covered by the Docker-backed integration suite using `manual-test-data/demo-50.csv`. | If this needed to operate at higher volume or with stronger operational guarantees, the next step would be moving batch work into a dedicated worker queue with retries and job visibility. |
 
 ### Endpoints
 
@@ -116,7 +116,7 @@ This section is mostly addressed. The single-company flow is in good shape, and 
 
 ### Non-Technical Takeaway
 
-The company input experience is working well and is already good enough to demonstrate the trial end to end. The only reason this section is not marked `Yes` is that larger CSV handling is still better described as strong demo behavior than fully hardened production behavior.
+The company input experience is working well and is already good enough to demonstrate the trial end to end. I can now point to a verified 50-row demo path. The only reason this section is not marked `Yes` is that larger CSV handling is still better described as strong demo behavior than fully hardened production behavior.
 
 ## 3.2 Company Identity Engine (Core)
 
