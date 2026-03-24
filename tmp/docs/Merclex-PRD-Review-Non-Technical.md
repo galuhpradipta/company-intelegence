@@ -40,3 +40,36 @@ The clearest proof for this section is the end-to-end flow itself:
 6. The results are shown back in the GUI through the results and company detail pages
 
 That flow is also covered by automated tests in `tests/unit/`, `e2e/company-intelligence/`, and `e2e/company-intelligence/integration/`.
+
+## 2. Product Overview
+
+Overall answer from me: `Mostly`
+
+This section is mostly addressed. The app delivers the requested miniature enrichment pipeline from company input through resolution, news collection, and relevance scoring. The main partial area is the final presentation: the information is shown across the batch results page and the company detail page rather than in one single combined dashboard.
+
+### User Flow
+
+| Point | Status | Plain-English answer | Proof | Anything still missing |
+|---|---|---|---|---|
+| 1. User enters a single company or uploads a CSV | Yes | The app supports both a single-company form and a CSV upload flow. | The entry screen supports both tabs in `src/routes/InputPage.tsx`, and CSV preview plus processing is handled by `server/routes/uploads.ts`. | Nothing major for this flow step. |
+| 2. System resolves each input against external APIs and returns a confidence score | Yes | The app resolves companies through external sources and produces a numeric confidence score. | Resolution is handled through the company-resolution flow in `server/services/company-resolution/`, and the confidence result is shown in the UI on the results and company detail screens. | Nothing major for this flow step. |
+| 3. Companies are bucketed into Confident, Suggested, and Not Found | Yes | The app clearly classifies results into the three requested outcome groups. | The tiering rules are defined in `server/services/company-resolution/scorer.ts`, and those tiers are visible in `src/routes/ResultsPage.tsx`, `src/routes/CompanyDetailPage.tsx`, and the single-company flow. | Nothing major for this flow step. |
+| 4. For confident matches, the system automatically fetches recent news articles | Yes | Confident matches automatically trigger news retrieval. | The company detail flow auto-fetches news for confident matches in `src/routes/CompanyDetailPage.tsx`, and batch processing also triggers news fetches for confident matches in `server/services/batch/batch-processor.ts`. | Nothing major for this flow step. |
+| 5. Each news article is scored for relevance using an LLM | Yes | The app scores article relevance using AI and stores the result. | Relevance scoring is implemented in `server/services/relevancy/scoring-service.ts`, and news refresh ties into that scoring flow through `server/services/news-ingestion/company-news.ts`. | Nothing major for this flow step. |
+| 6. User sees a dashboard with company matches, news feed, and relevance rankings | Mostly | The user can see all of this information, but it is split across screens rather than shown in one single combined dashboard. | `src/routes/ResultsPage.tsx` shows match outcomes and rankings at the batch level, while `src/routes/CompanyDetailPage.tsx` shows the company profile, news list, and article relevance ordering. | The final experience is split across pages instead of being one unified dashboard view. |
+
+### Non-Technical Takeaway
+
+The main user journey requested in the PRD is working. A user can enter company data, get a scored result, trigger or view news collection, and see relevance-ranked articles. The main reason this section is marked `Mostly` instead of `Yes` is that the final information is split across views rather than being presented in one single all-in-one dashboard.
+
+### Short Flow Proof
+
+The clearest proof for this section is the working product flow:
+
+1. The user starts on the input page and chooses either single-company entry or CSV upload
+2. The backend resolves company identity and assigns a confidence tier
+3. Confident results automatically continue into news collection
+4. News articles are scored for business relevance
+5. The user can review company-level results, batch-level results, and ranked news in the UI
+
+This user journey is also exercised in the browser and integration tests under `e2e/company-intelligence/` and `e2e/company-intelligence/integration/`.

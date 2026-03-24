@@ -1,0 +1,5 @@
+# Keep review docs trackable while treating the rest of tmp as scratch.
+*
+!.gitignore
+!docs/
+!docs/**
