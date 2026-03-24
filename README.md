@@ -159,6 +159,7 @@ Use the fixtures under `manual-test-data/` for manual CSV upload testing:
 
 - `manual-test-data/companies.csv` — valid rows using real company names and official domains
 - `manual-test-data/companies-invalid.csv` — same shape, but with one row missing `company_name`
+- `manual-test-data/demo-50.csv` — 50 valid rows sized for a mock-mode batch demo and the 50-row integration proof path
 
 Supported CSV columns:
 
@@ -232,7 +233,7 @@ E2E_USE_DOCKER=1
 - Verified on March 24, 2026: `pnpm build` passes.
 - Verified on March 24, 2026: `pnpm test` passes with `97` tests across `21` files.
 - Verified on March 24, 2026: `pnpm test:e2e` passes with `7` Company Intelligence browser tests.
-- Verified on March 24, 2026: `pnpm test:e2e:integration:docker` passes with `6` real-stack integration tests.
+- Verified on March 24, 2026: `pnpm test:e2e:integration:docker` passes with `7` real-stack integration tests.
 - Default test commands run with mocked third-party providers enabled, so regression runs do not burn external API or OpenAI credits.
 - Active browser coverage under `e2e/company-intelligence/` now covers smoke, confident/suggested/not-found single-company flows, scored news with low-relevance reveal, CSV validation, CSV progress/results actions, and Docker-backed real-backend integration flows.
 

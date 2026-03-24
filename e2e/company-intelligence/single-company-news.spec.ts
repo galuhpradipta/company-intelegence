@@ -94,6 +94,14 @@ async function mockCompanyTrpc(
         })
       }
 
+      if (procedure === 'news.refreshForCompany') {
+        return trpcSuccess({
+          companyId: COMPANY_ID,
+          articlesIngested: options.showAllNews.articles.length,
+          scoresCreated: options.showAllNews.articles.length,
+        })
+      }
+
       throw new Error(`Unhandled tRPC procedure in test: ${procedure}`)
     }
 

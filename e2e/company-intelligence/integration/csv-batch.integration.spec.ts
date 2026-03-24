@@ -1,4 +1,5 @@
 import { Buffer } from "node:buffer";
+import { readFileSync } from "node:fs";
 import { expect, test } from "@playwright/test";
 
 test("csv integration flow uses real backend batch processing with isolated database state", async ({ page }) => {
@@ -35,4 +36,34 @@ test("csv integration flow uses real backend batch processing with isolated data
   await expect(page.getByText("Top candidates")).toBeVisible();
   await expect(page.getByRole("button", { name: "Confirm Beta Labs Inc." })).toBeDisabled();
   await expect(page.getByRole("link", { name: "Retry →" })).toBeVisible();
+});
+
+test("csv integration flow processes a 50-row demo batch in mock mode", async ({ page }) => {
+  test.setTimeout(60_000);
+
+  const demoBatch = readFileSync(new URL("../../../manual-test-data/demo-50.csv", import.meta.url));
+
+  await page.goto("/");
+  await page.getByRole("tab", { name: "CSV Upload" }).click();
+
+  await page.locator('input[type="file"]').setInputFiles({
+    name: "demo-50.csv",
+    mimeType: "text/csv",
+    buffer: demoBatch,
+  });
+
+  await expect(page.getByText("Preview first 5 valid rows before processing:")).toBeVisible();
+  await expect(page.getByRole("cell", { name: "Acme Corp" })).toBeVisible();
+  await expect(page.getByRole("cell", { name: "Beta Labs" })).toBeVisible();
+  await expect(page.getByRole("cell", { name: "Nexus Health Systems" })).toBeVisible();
+  await expect(page.getByRole("cell", { name: "Gamma Systems" })).toBeVisible();
+  await expect(page.getByRole("cell", { name: "Delta Robotics Advisors" })).toBeVisible();
+
+  await page.getByRole("button", { name: "Start Processing" }).click();
+
+  await expect(page).toHaveURL(/\/results\/[0-9a-f-]+$/);
+  await expect(page.getByText("50 of 50 rows processed")).toBeVisible({ timeout: 30_000 });
+  await expect(page.getByRole("heading", { name: "Acme Corp" }).first()).toBeVisible();
+  await expect(page.getByText("Top candidates").first()).toBeVisible();
+  await expect(page.getByRole("link", { name: "Retry →" }).first()).toBeVisible();
 });
