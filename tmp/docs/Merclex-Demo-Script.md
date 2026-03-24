@@ -16,7 +16,7 @@ Show that the app works end to end for:
 Run the app in mock mode so the demo is stable and does not spend third-party credits:
 
 ```bash
-COMPANY_INTELLIGENCE_MOCK_EXTERNAL_PROVIDERS=1 OPENAI_API_KEY=test-openai-key pnpm dev:all
+pnpm demo:app
 ```
 
 Open `http://localhost:5173`.
@@ -28,7 +28,7 @@ Open `http://localhost:5173`.
 If I want the safest interview flow, I should use this for both the single-company demo and the 50-row CSV demo:
 
 ```bash
-COMPANY_INTELLIGENCE_MOCK_EXTERNAL_PROVIDERS=1 OPENAI_API_KEY=test-openai-key pnpm dev:all
+pnpm demo:app
 ```
 
 Why:
@@ -50,7 +50,7 @@ I can do that, but I should treat it as a separate mode:
 4. Restart in mock mode:
 
 ```bash
-COMPANY_INTELLIGENCE_MOCK_EXTERNAL_PROVIDERS=1 OPENAI_API_KEY=test-openai-key pnpm dev:all
+pnpm demo:app
 ```
 
 5. Demo the suggested, not-found, and 50-row CSV flows in mock mode
@@ -140,6 +140,21 @@ Proof points:
 - fixture: `manual-test-data/demo-50.csv`
 - integration test: `e2e/company-intelligence/integration/csv-batch.integration.spec.ts`
 - verification command: `pnpm test:e2e:integration:docker`
+- visual verification command: `pnpm test:e2e:integration:docker:demo`
+
+### If I want to show the automated visual flow more slowly
+
+Use:
+
+```bash
+pnpm test:e2e:integration:docker:demo
+```
+
+If I want it even slower:
+
+```bash
+PLAYWRIGHT_SLOW_MO_MS=1200 pnpm test:e2e:integration:docker:demo
+```
 
 ## If Asked About The Remaining Gap
 
