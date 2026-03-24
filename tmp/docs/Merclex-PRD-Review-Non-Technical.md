@@ -73,3 +73,139 @@ The clearest proof for this section is the working product flow:
 5. The user can review company-level results, batch-level results, and ranked news in the UI
 
 This user journey is also exercised in the browser and integration tests under `e2e/company-intelligence/` and `e2e/company-intelligence/integration/`.
+
+## 3. Feature Specifications
+
+Overall answer from me: `Mostly`
+
+Most of the feature specification is addressed well. The strongest parts are the company identity engine and the relevancy scoring flow. The main partial areas are large CSV durability and one news API detail where the implementation returns news ranked by relevance instead of by date.
+
+## 3.1 Company Input Interface
+
+Overall answer from me: `Mostly`
+
+This section is mostly addressed. The single-company flow is in good shape, and the CSV flow is strong for demo and trial use. The one area I would still call partial is the requirement to comfortably handle larger CSV jobs without timeout in a more production-like way.
+
+### Single Company Input
+
+| Point | Status | Plain-English answer | Proof | Anything still missing |
+|---|---|---|---|---|
+| Form with company fields | Yes | The form includes the requested company fields, including name, domain, address, city, state, country, and industry. | The single-company form is implemented in `src/features/company-input/SingleCompanyForm.tsx`. | Nothing major for this part. |
+| “Resolve” button triggers identity pipeline | Yes | The form has a clear action to start company resolution. | The resolve action is wired from the form into the company resolution backend through the company router and service layer. | Nothing major for this part. |
+| Loading or shimmer state while resolving | Yes | The user sees an active loading state while the company is being resolved. | The form shows a spinner and “Resolving…” state in `src/features/company-input/SingleCompanyForm.tsx`. | Nothing major for this part. |
+| Inline results for matched company or suggestions | Yes | The flow shows an inline matched company card for strong matches and inline suggestions for manual confirmation when needed. | The single-company UI handles confident, suggested, and not-found states directly in `src/features/company-input/SingleCompanyForm.tsx`. | Nothing major for this part. |
+
+### CSV Bulk Upload
+
+| Point | Status | Plain-English answer | Proof | Anything still missing |
+|---|---|---|---|---|
+| Accept CSV with template download | Yes | The app accepts CSV uploads and provides a template download link. | The CSV upload screen is implemented in `src/features/csv-upload/CsvUpload.tsx`. | Nothing major for this part. |
+| Required and optional CSV columns | Yes | The CSV flow is built around the required `company_name` field and supports the optional fields listed in the PRD. | CSV validation and parsing are handled through the upload and batch parsing flow in `server/routes/uploads.ts` and the batch services. | Nothing major for this part. |
+| Validate upload, show row count, missing fields, and preview first 5 rows | Yes | The app validates the CSV before processing and clearly shows counts, skipped rows, and a preview. | The preview and validation UI is in `src/features/csv-upload/CsvUpload.tsx`, and the preview endpoint is in `server/routes/uploads.ts`. | Nothing major for this part. |
+| Process companies in parallel with progress indicator | Yes | The app processes CSV rows in parallel and shows progress back to the user. | Batch concurrency is driven by `BATCH_CONCURRENCY` in `server/env.ts`, batch execution runs through `server/services/batch/batch-processor.ts`, and progress is shown in `src/routes/ResultsPage.tsx`. | Nothing major for this part. |
+| Handle at least 50 companies without timeout | Mostly | The app is designed to process larger batches and now supports resumable progress, but it still runs inside the main web process rather than a separate durable worker. | Batch execution and resume behavior are implemented in `server/services/batch/batch-processor.ts`, but the work still lives in the web app process. | This is the main remaining gap for this section. |
+
+### Endpoints
+
+| Point | Status | Plain-English answer | Proof | Anything still missing |
+|---|---|---|---|---|
+| `POST /api/company/resolve` | Yes | The single-company resolution endpoint exists. | The REST endpoint is implemented in `server/routes/company.ts`. | Nothing major for this part. |
+| `POST /api/company/resolve-batch` | Yes | The batch resolution endpoint exists. | The batch upload endpoint is implemented in `server/routes/uploads.ts`. | Nothing major for this part. |
+| `POST /api/company/confirm` | Yes | The app supports manual confirmation of a suggested match. | The confirm endpoint is implemented in `server/routes/company.ts`. | Nothing major for this part. |
+| `GET /api/company/:id` | Yes | The app returns a resolved company profile with supporting details. | The company profile endpoint is implemented in `server/routes/company.ts`. | Nothing major for this part. |
+
+### Non-Technical Takeaway
+
+The company input experience is working well and is already good enough to demonstrate the trial end to end. The only reason this section is not marked `Yes` is that larger CSV handling is still better described as strong demo behavior than fully hardened production behavior.
+
+## 3.2 Company Identity Engine (Core)
+
+Overall answer from me: `Yes`
+
+This is one of the strongest parts of the implementation. The identity engine is structured in a way that is extensible, layered, and easy to reason about, which is exactly what this trial section is trying to evaluate.
+
+### Architecture Requirements
+
+| Point | Status | Plain-English answer | Proof | Anything still missing |
+|---|---|---|---|---|
+| Provider abstraction pattern | Yes | Each company source follows the same pattern, which makes the system easier to extend. | The shared contract is defined in `server/providers/company/types.ts`, the sources are assembled in `server/providers/company/registry.ts`, and the orchestrator consumes that registry. | Nothing major for this part. |
+| Confidence scoring | Yes | The app calculates confidence from multiple business signals such as name, domain, address, and industry alignment. | The scoring rules are implemented in `server/services/company-resolution/scorer.ts`. | Nothing major for this part. |
+| Entity resolution and conflict handling | Yes | The app merges overlapping company results into one canonical record, keeps track of where fields came from, and uses source quality and freshness to resolve conflicts. | This behavior is implemented across `server/services/company-resolution/merger.ts`, `persistence-metadata.ts`, and `orchestrator.ts`. | Historical duplicate cleanup would still be a future improvement, but the main requirement is addressed. |
+| Tiered output | Yes | The app clearly separates confident, suggested, and not-found outcomes and behaves differently for each one. | Tier behavior is enforced through the scorer, the resolution flow, the input experience, and the batch results flow. | Nothing major for this part. |
+
+### Data Sources
+
+| Point | Status | Plain-English answer | Proof | Anything still missing |
+|---|---|---|---|---|
+| Integrate at least 2 sources | Yes | The app integrates more than the minimum requirement. | The current provider registry includes People Data Labs, SEC EDGAR, OpenCorporates, and an AI fallback path in `server/providers/company/registry.ts`. | Nothing major for this part. |
+| Mocking acceptable when live access is limited | Yes | The app supports mocked provider behavior for testing and safe local evaluation. | Mock provider behavior is built into the provider registry and environment handling. | Nothing major for this part. |
+
+### Schema Design
+
+| Point | Status | Plain-English answer | Proof | Anything still missing |
+|---|---|---|---|---|
+| Canonical company model and supporting source records | Yes | The data design follows the spirit of the PRD very closely. | The schema under `server/db/schema/` includes companies, source records, identifiers, resolution inputs, and ranked matches. | Nothing major for this part. |
+
+### Non-Technical Takeaway
+
+This is the clearest “Yes” section in the PRD. The identity engine is structured like a real product subsystem rather than a one-off demo script, which is exactly what this part of the assignment is meant to test.
+
+## 3.3 News Ingestion Pipeline
+
+Overall answer from me: `Mostly`
+
+This section is mostly addressed. The app fetches, stores, deduplicates, and scores recent company news, and it does this automatically for confident matches. The main mismatch is that the API returns news ranked by relevance instead of strictly sorted by date.
+
+### Requirements
+
+| Point | Status | Plain-English answer | Proof | Anything still missing |
+|---|---|---|---|---|
+| Fetch from at least one news API | Yes | The app supports multiple news providers, which is more than the minimum requirement. | News providers are registered in `server/providers/news/registry.ts`. | Nothing major for this part. |
+| Search using company name and optionally domain or ticker | Yes | The app builds the news search using company name plus stronger signals such as domain and ticker when available. | This behavior is implemented in `server/services/news-ingestion/ingestion-service.ts` and the related query builder. | Nothing major for this part. |
+| Store title, source, date, URL, snippet, and full text when available | Yes | The app stores the key article fields requested by the PRD. | Article ingestion and storage are handled in `server/services/news-ingestion/ingestion-service.ts`. | Nothing major for this part. |
+| Deduplicate same-event coverage | Yes | The app removes duplicate or near-duplicate coverage across outlets. | Deduplication is built into the news ingestion flow through the dedupe helpers used by `ingestion-service.ts`. | Nothing major for this part. |
+| Handle rate limits gracefully | Yes | The app includes retry and backoff handling rather than failing immediately. | News-provider retry behavior was added into the provider layer and is exercised by the ingestion flow. | Nothing major for the trial scope. |
+| Fetch most recent 30 days of news | Yes | The app fetches recent news across the 30-day window requested in the PRD. | The lookback period is driven by `NEWS_LOOKBACK_DAYS` in `server/env.ts` and used in `server/services/news-ingestion/ingestion-service.ts`. | Nothing major for this part. |
+
+### Endpoints
+
+| Point | Status | Plain-English answer | Proof | Anything still missing |
+|---|---|---|---|---|
+| `POST /api/news/fetch/:companyId` | Yes | The app supports manually triggering news collection for a resolved company. | The endpoint exists in `server/routes/news.ts`. | Nothing major for this part. |
+| `GET /api/news/:companyId` returns stored articles sorted by date, with scores if available | Mostly | The endpoint returns stored articles and includes relevance data, but the ordering is by relevance rather than by date. | The route exists in `server/routes/news.ts`, and the sorting behavior is defined in `server/services/news-ingestion/company-news.ts`. | The ordering does not exactly match the PRD wording for this endpoint. |
+
+### Non-Technical Takeaway
+
+The news pipeline is working and useful. The only real reason this section is `Mostly` instead of `Yes` is that the current product chooses to rank news by relevance, which matches the later GUI requirement well, but does not exactly match the PRD sentence that says the API should sort by date.
+
+## 3.4 Company Relevancy Scoring Engine
+
+Overall answer from me: `Yes`
+
+This section is addressed well. The app does not just collect articles; it scores them in context and turns them into something closer to business intelligence, which is the main purpose of this part of the PRD.
+
+### Scoring Requirements
+
+| Point | Status | Plain-English answer | Proof | Anything still missing |
+|---|---|---|---|---|
+| LLM-powered scoring with structured output | Yes | The app uses AI to return a score, category, and one-line explanation in a structured format. | This is implemented in `server/services/relevancy/scoring-service.ts` and exposed through `server/routes/relevancy.ts`. | Nothing major for this part. |
+| Context-aware scoring | Yes | The scoring prompt includes the company’s details so relevance is judged in business context, not in isolation. | The scoring prompt in `server/services/relevancy/scoring-service.ts` includes company name, industry, size, and location. | Nothing major for this part. |
+| Batch processing with graceful failure handling | Yes | The app can score multiple articles concurrently and retry failures instead of blocking everything. | Batch scoring, concurrency, and retries are implemented in `server/services/relevancy/scoring-service.ts`. | Nothing major for this part. |
+| Filtering threshold below 30 hidden by default, but still accessible | Yes | Low-scoring articles are hidden by default but can still be shown. | The filter behavior is implemented in `server/services/news-ingestion/company-news.ts`, and the UI toggle is shown in `src/routes/CompanyDetailPage.tsx`. | Nothing major for this part. |
+
+### Relevancy Categories
+
+| Point | Status | Plain-English answer | Proof | Anything still missing |
+|---|---|---|---|---|
+| Relevancy categories are defined and used | Yes | The app uses clear article categories that match the PRD intent. | The supported categories are defined in `server/services/relevancy/scoring-service.ts`. | Nothing major for this part. |
+
+### Endpoints
+
+| Point | Status | Plain-English answer | Proof | Anything still missing |
+|---|---|---|---|---|
+| `POST /api/relevancy/score` | Yes | The single-article scoring endpoint exists. | It is implemented in `server/routes/relevancy.ts`. | Nothing major for this part. |
+| `POST /api/relevancy/batch` | Yes | The batch scoring endpoint exists. | It is implemented in `server/routes/relevancy.ts`. | Nothing major for this part. |
+
+### Non-Technical Takeaway
+
+This section is in strong shape. The app does not stop at collecting raw news articles; it adds structured relevance scoring, categories, and explanations, which is the part that makes the output more useful for actual business review.
