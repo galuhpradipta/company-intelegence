@@ -5,6 +5,39 @@ test('single-company low-confidence candidates stay in not-found state with no c
   await page.route(/\/trpc\/.+/, async (route) => {
     const url = route.request().url()
     const procedurePath = new URL(url).pathname.split('/trpc/')[1] ?? ''
+    const procedures = procedurePath.split(',')
+
+    if (procedures.every((procedure) => procedure === 'relevancy.viewerCompanyProfile')) {
+      await route.fulfill({
+        status: 200,
+        contentType: 'application/json',
+        body: JSON.stringify(
+          procedures.map(() =>
+            trpcSuccess({
+              name: 'Merclex',
+              domain: 'merclex.example',
+              roleFunction: 'Finance Manager / AR Manager',
+              description: 'Merclex uses merclex.example and needs finance and AR visibility into customer health, payment timing, collections exposure, and cash-flow risk.',
+            }),
+          ),
+        ),
+      })
+      return
+    }
+
+    if (procedurePath === 'relevancy.viewerCompanyProfile') {
+      await route.fulfill({
+        status: 200,
+        contentType: 'application/json',
+        body: JSON.stringify(trpcSuccess({
+          name: 'Merclex',
+          domain: 'merclex.example',
+          roleFunction: 'Finance Manager / AR Manager',
+          description: 'Merclex uses merclex.example and needs finance and AR visibility into customer health, payment timing, collections exposure, and cash-flow risk.',
+        })),
+      })
+      return
+    }
 
     if (procedurePath !== 'company.resolve') {
       throw new Error(`Unhandled tRPC procedure in test: ${procedurePath}`)
@@ -31,6 +64,7 @@ test('single-company low-confidence candidates stay in not-found state with no c
 
   await page.goto('/')
 
+  await expect(page.getByText('My Company Context')).toBeVisible()
   await page.getByPlaceholder('e.g. Apple Inc.').fill('Delta Robotics Advisors')
   await page.getByRole('button', { name: 'Resolve Company' }).click()
 

@@ -3,6 +3,7 @@ import { db } from '../../db/client.js'
 import { articleRelevancyScores, companyArticles, newsArticles } from '../../db/schema/index.js'
 import { scoreArticlesForCompany } from '../relevancy/index.js'
 import { fetchNewsForCompany } from './ingestion-service.js'
+import type { ViewerCompanyProfile } from '../relevancy/viewer-company-profile.js'
 
 export interface CompanyNewsArticle {
   articleId: string
@@ -139,12 +140,14 @@ export async function listNewsByCompany(companyId: string, showAll = false): Pro
   }
 }
 
-export async function refreshCompanyNews(companyId: string): Promise<{
+export async function refreshCompanyNews(companyId: string, viewerCompanyProfile?: ViewerCompanyProfile): Promise<{
   articlesIngested: number
   articlesScored: number
 }> {
   const { articlesIngested } = await fetchNewsForCompany(companyId)
-  const scoredArticles = await scoreArticlesForCompany(companyId)
+  const scoredArticles = await scoreArticlesForCompany(companyId, viewerCompanyProfile, {
+    forceRescore: Boolean(viewerCompanyProfile),
+  })
 
   return {
     articlesIngested,

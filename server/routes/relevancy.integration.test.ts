@@ -64,13 +64,13 @@ describe('relevancyRoute integration', () => {
           articleId: 'article-relevant',
           relevancyScore: 92,
           category: 'market_expansion',
-          explanation: 'Expansion is directly tied to Apple operations and growth plans.',
+          explanation: 'Your Finance Manager / AR Manager should watch customer growth and payment timing.',
         },
         {
           articleId: 'article-weak',
           relevancyScore: 18,
           category: 'industry_sector',
-          explanation: 'The article is only an indirect rumor with weak company impact.',
+          explanation: 'Your Finance Manager / AR Manager has limited immediate collections risk from this rumor.',
         },
       ],
     })

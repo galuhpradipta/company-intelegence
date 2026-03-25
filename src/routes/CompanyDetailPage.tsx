@@ -4,6 +4,16 @@ import { trpc } from '../lib/trpc.js'
 import { TierBadge } from '../components/ui/TierBadge.js'
 import { Spinner } from '../components/ui/Spinner.js'
 import { shouldAutoRefreshCompanyNews } from '../features/news/refreshPolicy.js'
+import { ViewerCompanyContextCard } from '../features/relevancy/ViewerCompanyContextCard.js'
+import {
+  buildViewerCompanyProfileFingerprint,
+  getAppliedViewerCompanyProfileFingerprint,
+  hasViewerCompanyProfileFingerprintChanged,
+  loadStoredViewerCompanyProfile,
+  setAppliedViewerCompanyProfileFingerprint,
+  toViewerCompanyProfileRequest,
+  type ViewerCompanyProfile,
+} from '../features/relevancy/viewerCompanyProfileBrowser.js'
 
 type CompanyData = Awaited<ReturnType<typeof trpc.company.getById.query>>
 type NewsData = Awaited<ReturnType<typeof trpc.news.listByCompany.query>>
@@ -49,10 +59,22 @@ export function CompanyDetailPage() {
     }
   }
 
-  async function triggerNewsFetch(id: string) {
+  async function triggerNewsFetch(id: string, viewerProfile?: ViewerCompanyProfile | null) {
     setFetchingNews(true)
+    const activeViewerProfile = viewerProfile ?? loadStoredViewerCompanyProfile()
     try {
-      await trpc.news.refreshForCompany.mutate(id)
+      await trpc.news.refreshForCompany.mutate({
+        companyId: id,
+        viewerCompanyProfile: activeViewerProfile
+          ? toViewerCompanyProfileRequest(activeViewerProfile)
+          : undefined,
+      })
+      if (activeViewerProfile) {
+        setAppliedViewerCompanyProfileFingerprint(
+          id,
+          buildViewerCompanyProfileFingerprint(activeViewerProfile),
+        )
+      }
     } catch (err) {
       console.warn('News fetch failed:', err)
       return
@@ -86,8 +108,16 @@ export function CompanyDetailPage() {
         setNewsData(existingNews)
         hasLoadedInitialNews.current = true
 
-        if (c.matchTier === 'confident' && shouldAutoRefreshCompanyNews(existingNews.meta)) {
-          void triggerNewsFetch(id)
+        const savedViewerProfile = loadStoredViewerCompanyProfile()
+        const profileNeedsRefresh = savedViewerProfile
+          ? hasViewerCompanyProfileFingerprintChanged(
+            savedViewerProfile,
+            getAppliedViewerCompanyProfileFingerprint(id),
+          )
+          : false
+
+        if (c.matchTier === 'confident' && (shouldAutoRefreshCompanyNews(existingNews.meta) || profileNeedsRefresh)) {
+          void triggerNewsFetch(id, savedViewerProfile)
         }
       } catch (err) {
         if (cancelled) return
@@ -137,6 +167,11 @@ export function CompanyDetailPage() {
     company.confidenceScore >= 80 ? 'text-emerald-600' :
     company.confidenceScore >= 55 ? 'text-amber-600' :
     'text-red-500'
+
+  async function handleViewerCompanyProfileSaved(profile: ViewerCompanyProfile) {
+    if (!companyId) return
+    await triggerNewsFetch(companyId, profile)
+  }
 
   return (
     <div className="space-y-6">
@@ -230,6 +265,11 @@ export function CompanyDetailPage() {
         </div>
       </div>
 
+      <ViewerCompanyContextCard
+        mode="detail"
+        onSaveProfile={handleViewerCompanyProfileSaved}
+      />
+
       {/* News section */}
       <div className="animate-fade-up stagger-2">
         <div className="flex items-center justify-between mb-4 gap-4">
@@ -239,17 +279,29 @@ export function CompanyDetailPage() {
               <p className="text-xs text-stone-400 mt-0.5">{articles.length} article{articles.length !== 1 ? 's' : ''} found</p>
             )}
           </div>
-          {totalArticles > 0 && (
-            <label className="flex items-center gap-2 text-sm text-stone-500 shrink-0 cursor-pointer">
-              <input
-                type="checkbox"
-                checked={showAll}
-                onChange={(e) => setShowAll(e.target.checked)}
-                className="rounded accent-app-accent"
-              />
-              Show low-relevance
-            </label>
-          )}
+          <div className="flex items-center gap-3 flex-wrap justify-end">
+            {company.matchTier === 'confident' && (
+              <button
+                type="button"
+                onClick={() => void triggerNewsFetch(companyId!, loadStoredViewerCompanyProfile())}
+                disabled={fetchingNews}
+                className="rounded-lg border border-teal-200 bg-teal-50 px-3.5 py-2 text-sm font-semibold text-teal-700 transition-colors hover:bg-teal-100 disabled:cursor-not-allowed disabled:opacity-60"
+              >
+                {fetchingNews ? 'Refreshing…' : 'Refresh With My Company'}
+              </button>
+            )}
+            {totalArticles > 0 && (
+              <label className="flex items-center gap-2 text-sm text-stone-500 shrink-0 cursor-pointer">
+                <input
+                  type="checkbox"
+                  checked={showAll}
+                  onChange={(e) => setShowAll(e.target.checked)}
+                  className="rounded accent-app-accent"
+                />
+                Show low-relevance
+              </label>
+            )}
+          </div>
         </div>
 
         {/* News fetching progress banner */}
@@ -298,7 +350,7 @@ export function CompanyDetailPage() {
               <p className="text-xs text-stone-400 mt-1">News is fetched automatically for confident matches.</p>
             )}
             <button
-              onClick={() => triggerNewsFetch(companyId!)}
+              onClick={() => void triggerNewsFetch(companyId!, loadStoredViewerCompanyProfile())}
               className="mt-4 text-sm font-semibold text-app-accent hover:underline transition-colors"
             >
               Fetch news manually →

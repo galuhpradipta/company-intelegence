@@ -1,6 +1,7 @@
 import { useNavigate, useSearchParams } from 'react-router'
 import { SingleCompanyForm } from '../features/company-input/SingleCompanyForm.js'
 import { CsvUpload } from '../features/csv-upload/CsvUpload.js'
+import { ViewerCompanyContextCard } from '../features/relevancy/ViewerCompanyContextCard.js'
 
 export function InputPage() {
   const navigate = useNavigate()
@@ -40,6 +41,8 @@ export function InputPage() {
           Enter a company to resolve it against external data sources, fetch news, and score relevancy.
         </p>
       </div>
+
+      <ViewerCompanyContextCard />
 
       {/* Tab toggle */}
       <div role="tablist" aria-label="Input mode" className="flex bg-stone-100 rounded-lg p-1 mb-6 w-fit">

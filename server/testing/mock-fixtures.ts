@@ -15,6 +15,11 @@ interface MockArticleScore {
   explanation: string
 }
 
+interface MockViewerCompanyContext {
+  name: string
+  roleFunction: string
+}
+
 interface MockCompanyScenario {
   aliases: string[]
   candidates: CandidateCompany[]
@@ -244,14 +249,18 @@ export function getMockNewsArticles(query: string, fromDate: Date, toDate: Date)
     .map(cloneArticle)
 }
 
-export function getMockArticleScore(article: { articleId?: string; title: string }): MockArticleScore {
+export function getMockArticleScore(
+  article: { articleId?: string; title: string },
+  viewerCompany?: MockViewerCompanyContext,
+): MockArticleScore {
   const normalizedTitle = normalizeValue(article.title)
+  const roleLabel = viewerCompany?.roleFunction ?? 'Finance/AR team'
 
   if (normalizedTitle.includes('apple expands supply chain')) {
     return {
       relevancyScore: 92,
       category: 'market_expansion',
-      explanation: 'Expansion is directly tied to Apple operations and growth plans.',
+      explanation: `Your ${roleLabel} should watch customer growth and payment timing.`,
     }
   }
 
@@ -259,14 +268,14 @@ export function getMockArticleScore(article: { articleId?: string; title: string
     return {
       relevancyScore: 18,
       category: 'industry_sector',
-      explanation: 'The article is only an indirect rumor with weak company impact.',
+      explanation: `Your ${roleLabel} has limited immediate collections risk from this rumor.`,
     }
   }
 
   return {
     relevancyScore: 56,
     category: 'industry_sector',
-    explanation: 'The article is relevant enough for demo coverage but not a core company event.',
+    explanation: `Your ${roleLabel} should monitor for spillover risk, but impact is not yet direct.`,
   }
 }
 

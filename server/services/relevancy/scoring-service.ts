@@ -6,8 +6,10 @@ import { articleRelevancyScores, companyArticles, newsArticles, companies } from
 import { and, eq } from 'drizzle-orm'
 import { env } from '../../env.js'
 import { getMockArticleScore } from '../../testing/mock-fixtures.js'
+import { buildRelevancyPrompt } from './prompt-builder.js'
+import { getDefaultViewerCompanyProfile, type ViewerCompanyProfile } from './viewer-company-profile.js'
 
-const PROMPT_VERSION = 'v1'
+export const PROMPT_VERSION = 'v3'
 const CONCURRENCY = 5
 const MAX_RETRIES = 2
 
@@ -56,10 +58,13 @@ export interface ArticleScore {
 async function scoreOneArticle(
   companyContext: CompanyProfileSummary,
   article: { id: string; title: string; snippet?: string | null; fullText?: string | null },
+  viewerCompanyOverride?: ViewerCompanyProfile,
   retryCount = 0
 ): Promise<ArticleScore | null> {
+  const viewerCompany = viewerCompanyOverride ?? await getDefaultViewerCompanyProfile()
+
   if (env.COMPANY_INTELLIGENCE_MOCK_EXTERNAL_PROVIDERS) {
-    const mockScore = getMockArticleScore(article)
+    const mockScore = getMockArticleScore(article, viewerCompany)
     return {
       articleId: article.id,
       relevancyScore: mockScore.relevancyScore,
@@ -70,25 +75,14 @@ async function scoreOneArticle(
 
   const articleText = article.fullText ?? article.snippet ?? article.title
 
-  const prompt = `You are a financial and business intelligence analyst. Score how relevant the following news article is to understanding the business health, creditworthiness, or operational risk of the company described below.
-
-Company:
-- Name: ${companyContext.displayName}${companyContext.legalName && companyContext.legalName !== companyContext.displayName ? ` (legal: ${companyContext.legalName})` : ''}
-- Industry: ${companyContext.industry ?? 'unknown'}
-- Size: ${companyContext.employeeCount ? `~${companyContext.employeeCount} employees` : 'unknown size'}
-- Location: ${[companyContext.hqCity, companyContext.hqCountry].filter(Boolean).join(', ') || 'unknown'}
-
-Article:
-Title: ${article.title}
-Content: ${articleText.slice(0, 1000)}
-
-Relevancy score guidelines:
-- 85-100: Directly about this company's financial performance, legal issues, leadership, or major operational events
-- 50-84: Mentions the company in significant context or covers industry events that directly affect them
-- 30-49: Tangentially relevant — industry trends or sector news that partially applies
-- 0-29: Not relevant or only incidentally mentions the company
-
-Return a JSON object with: relevancyScore (0-100 integer), category (one of: financial_performance, litigation_legal, leadership_change, operational_risk, market_expansion, industry_sector), and explanation (max 160 chars, explain why this score).`
+  const prompt = buildRelevancyPrompt({
+    companyContext,
+    article: {
+      title: article.title,
+      text: articleText.slice(0, 1000),
+    },
+    viewerCompany,
+  })
 
   try {
     const response = await client.responses.create({
@@ -126,7 +120,7 @@ Return a JSON object with: relevancyScore (0-100 integer), category (one of: fin
     if (retryCount < MAX_RETRIES) {
       const delay = Math.pow(2, retryCount) * 500
       await new Promise((r) => setTimeout(r, delay))
-      return scoreOneArticle(companyContext, article, retryCount + 1)
+      return scoreOneArticle(companyContext, article, viewerCompanyOverride, retryCount + 1)
     }
     console.warn(`[Relevancy] Failed to score article ${article.id}:`, err)
     return null
@@ -136,29 +130,35 @@ Return a JSON object with: relevancyScore (0-100 integer), category (one of: fin
 export async function scoreArticleForProfile(
   companyContext: CompanyProfileSummary,
   article: RelevancyArticleInput,
+  viewerCompany?: ViewerCompanyProfile,
 ): Promise<ArticleScore | null> {
   return scoreOneArticle(companyContext, {
     id: article.articleId ?? crypto.randomUUID(),
     title: article.title,
     snippet: article.snippet,
     fullText: article.fullText,
-  })
+  }, viewerCompany)
 }
 
 export async function scoreArticleBatchForProfile(
   companyContext: CompanyProfileSummary,
   articles: RelevancyArticleInput[],
+  viewerCompany?: ViewerCompanyProfile,
 ): Promise<Array<ArticleScore | null>> {
   const limit = pLimit(CONCURRENCY)
 
   return Promise.all(
     articles.map((article) =>
-      limit(() => scoreArticleForProfile(companyContext, article))
+      limit(() => scoreArticleForProfile(companyContext, article, viewerCompany))
     )
   )
 }
 
-export async function scoreArticlesForCompany(companyId: string): Promise<ArticleScore[]> {
+export async function scoreArticlesForCompany(
+  companyId: string,
+  viewerCompany?: ViewerCompanyProfile,
+  options?: { forceRescore?: boolean },
+): Promise<ArticleScore[]> {
   const [company] = await db
     .select({
       id: companies.id,
@@ -182,6 +182,7 @@ export async function scoreArticlesForCompany(companyId: string): Promise<Articl
       snippet: newsArticles.snippet,
       fullText: newsArticles.fullText,
       scoreStatus: articleRelevancyScores.status,
+      promptVersion: articleRelevancyScores.promptVersion,
     })
     .from(companyArticles)
     .innerJoin(newsArticles, eq(companyArticles.articleId, newsArticles.id))
@@ -202,6 +203,7 @@ export async function scoreArticlesForCompany(companyId: string): Promise<Articl
     snippet: string | null
     fullText: string | null
     scoreStatus: string | null
+    promptVersion: string | null
   }>()
 
   for (const row of rows) {
@@ -214,6 +216,7 @@ export async function scoreArticlesForCompany(companyId: string): Promise<Articl
         snippet: row.snippet,
         fullText: row.fullText,
         scoreStatus: row.scoreStatus,
+        promptVersion: row.promptVersion,
       })
       continue
     }
@@ -224,7 +227,7 @@ export async function scoreArticlesForCompany(companyId: string): Promise<Articl
   }
 
   const validArticles = [...articlesById.values()].filter(
-    (article) => article.scoreStatus !== 'scored',
+    (article) => options?.forceRescore || article.scoreStatus !== 'scored' || article.promptVersion !== PROMPT_VERSION,
   )
 
   if (validArticles.length === 0) return []
@@ -233,7 +236,7 @@ export async function scoreArticlesForCompany(companyId: string): Promise<Articl
   const results = await Promise.all(
     validArticles.map((article) =>
       limit(async () => {
-        const score = await scoreOneArticle(company, article)
+        const score = await scoreOneArticle(company, article, viewerCompany)
         if (!score) {
           // Persist failed score
           await db
