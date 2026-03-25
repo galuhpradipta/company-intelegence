@@ -17,7 +17,7 @@ test('single-company low-confidence candidates stay in not-found state with no c
               name: 'Merclex',
               domain: 'merclex.example',
               roleFunction: 'Finance Manager / AR Manager',
-              description: 'Merclex uses merclex.example and needs finance and AR visibility into customer health, payment timing, collections exposure, and cash-flow risk.',
+              description: 'Merclex is a company operating through merclex.example. For finance/AR relevance, key exposure areas are customer exposure, payment timing, collections pressure, cash-flow sensitivity, operational dependency, and legal/regulatory risk.',
             }),
           ),
         ),
@@ -33,7 +33,7 @@ test('single-company low-confidence candidates stay in not-found state with no c
           name: 'Merclex',
           domain: 'merclex.example',
           roleFunction: 'Finance Manager / AR Manager',
-          description: 'Merclex uses merclex.example and needs finance and AR visibility into customer health, payment timing, collections exposure, and cash-flow risk.',
+          description: 'Merclex is a company operating through merclex.example. For finance/AR relevance, key exposure areas are customer exposure, payment timing, collections pressure, cash-flow sensitivity, operational dependency, and legal/regulatory risk.',
         })),
       })
       return

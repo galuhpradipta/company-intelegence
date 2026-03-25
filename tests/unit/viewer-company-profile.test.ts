@@ -46,7 +46,7 @@ describe('viewer company profile helper', () => {
     })
 
     const create = vi.fn().mockResolvedValue({
-      output_text: 'Merclex supports finance teams with customer-risk and payment-timing visibility.',
+      output_text: 'Merclex is a company operating through merclex.example. For finance/AR relevance, key exposure areas are customer exposure, payment timing, and collections pressure.',
     })
 
     vi.doMock('openai', () => ({
@@ -64,9 +64,14 @@ describe('viewer company profile helper', () => {
     const second = await getDefaultViewerCompanyProfile()
 
     expect(create).toHaveBeenCalledTimes(1)
+    expect(String(create.mock.calls[0]?.[0]?.input)).toContain('Return exactly 2 short sentences and no bullets.')
+    expect(String(create.mock.calls[0]?.[0]?.input)).toContain('Sentence 2: begin with "For finance/AR relevance, key exposure areas are"')
+    expect(String(create.mock.calls[0]?.[0]?.input)).toContain('Do not use marketing language or slogans.')
+    expect(String(create.mock.calls[0]?.[0]?.input)).toContain('Do not invent exact metrics, dates, recent claims')
+    expect(String(create.mock.calls[0]?.[0]?.input)).toContain('Do not speculate. When uncertain, stay generic, durable, and useful for later relevancy analysis.')
     expect(first).toEqual({
       ...DEFAULT_VIEWER_COMPANY_PROFILE_SEED,
-      description: 'Merclex supports finance teams with customer-risk and payment-timing visibility.',
+      description: 'Merclex is a company operating through merclex.example. For finance/AR relevance, key exposure areas are customer exposure, payment timing, and collections pressure.',
     })
     expect(second).toEqual(first)
   })

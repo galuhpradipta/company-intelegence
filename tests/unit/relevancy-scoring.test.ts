@@ -102,7 +102,7 @@ describe('scoreArticlesForCompany persistence', () => {
       name: 'Acme Finance',
       domain: 'acme.example',
       roleFunction: 'Finance Manager / AR Manager',
-      description: 'Acme watches customer payment timing and collections risk.',
+      description: 'Acme Finance is a company operating through acme.example. For finance/AR relevance, key exposure areas are customer exposure, payment timing, and collections pressure.',
     }, {
       forceRescore: true,
     })).resolves.toEqual([
@@ -116,7 +116,7 @@ describe('scoreArticlesForCompany persistence', () => {
 
     expect(PROMPT_VERSION).toBe('v3')
     expect(String(create.mock.calls[0]?.[0]?.input)).toContain('Name: Acme Finance')
-    expect(String(create.mock.calls[0]?.[0]?.input)).toContain('Description: Acme watches customer payment timing and collections risk.')
+    expect(String(create.mock.calls[0]?.[0]?.input)).toContain('Description: Acme Finance is a company operating through acme.example. For finance/AR relevance, key exposure areas are customer exposure, payment timing, and collections pressure.')
     expect(dbMock.persistedValues).toEqual([
       expect.objectContaining({
         companyId: 'company-1',
@@ -144,7 +144,7 @@ describe('scoreArticlesForCompany persistence', () => {
         name: 'Merclex',
         domain: 'merclex.example',
         roleFunction: 'Finance Manager / AR Manager',
-        description: 'Merclex monitors customer risk and payment timing.',
+        description: 'Merclex is a company operating through merclex.example. For finance/AR relevance, key exposure areas are customer exposure, payment timing, and collections pressure.',
       }),
     }))
 

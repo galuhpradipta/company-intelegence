@@ -50,13 +50,7 @@ export async function generateViewerCompanyDescription(profile: ViewerCompanyPro
   try {
     const response = await client.responses.create({
       model: env.OPENAI_MODEL,
-      input: `Write a concise 1-2 sentence company profile for downstream business-news prompting.
-
-Company name: ${profile.name}
-Domain: ${profile.domain}
-Role/function consuming the output: ${profile.roleFunction}
-
-Focus on what a finance and AR team would care about. Keep it high-level and do not invent exact metrics.`,
+      input: buildViewerCompanyDescriptionPrompt(profile),
     })
 
     const normalized = normalizeDescription(response.output_text)
@@ -72,7 +66,7 @@ export function resetDefaultViewerCompanyProfileCache() {
 }
 
 export function buildDeterministicViewerCompanyDescription(profile: ViewerCompanyProfileSeed): string {
-  return `${profile.name} uses ${profile.domain} and needs finance and AR visibility into customer health, payment timing, collections exposure, and cash-flow risk.`
+  return `${profile.name} is a company operating through ${profile.domain}. For finance/AR relevance, key exposure areas are customer exposure, payment timing, collections pressure, cash-flow sensitivity, operational dependency, and legal/regulatory risk.`
 }
 
 function shouldUseDeterministicDescription(): boolean {
@@ -84,4 +78,22 @@ function normalizeDescription(value: string): string {
     .replace(/\s+/g, ' ')
     .trim()
     .slice(0, 240)
+}
+
+function buildViewerCompanyDescriptionPrompt(profile: ViewerCompanyProfileSeed): string {
+  return `Write a concise company summary for downstream finance/AR news relevancy prompting.
+
+Company name: ${profile.name}
+Domain: ${profile.domain}
+Role/function consuming the output: ${profile.roleFunction}
+
+Return exactly 2 short sentences and no bullets.
+Sentence 1: only include stable company or business-model context if it is clear with high confidence from the company name and domain. If it is unclear, use conservative wording like "${profile.name} is a company operating through ${profile.domain}."
+Sentence 2: begin with "For finance/AR relevance, key exposure areas are" and describe reusable cues such as customer exposure, payment timing, collections pressure, cash-flow sensitivity, operational dependency, and legal/regulatory risk.
+
+Do not use marketing language or slogans.
+Do not invent exact metrics, dates, recent claims, or named customers, products, or geographies unless they are directly obvious from the company name or domain.
+Do not speculate. When uncertain, stay generic, durable, and useful for later relevancy analysis.
+Keep the total output under 240 characters.
+Return plain text only.`
 }

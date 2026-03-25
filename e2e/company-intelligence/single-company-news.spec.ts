@@ -7,7 +7,7 @@ const VIEWER_COMPANY_PROFILE = {
   name: 'Merclex',
   domain: 'merclex.example',
   roleFunction: 'Finance Manager / AR Manager',
-  description: 'Merclex uses merclex.example and needs finance and AR visibility into customer health, payment timing, collections exposure, and cash-flow risk.',
+  description: 'Merclex is a company operating through merclex.example. For finance/AR relevance, key exposure areas are customer exposure, payment timing, collections pressure, cash-flow sensitivity, operational dependency, and legal/regulatory risk.',
 }
 const COMPANY_DETAIL = {
   id: COMPANY_ID,
@@ -86,7 +86,7 @@ async function mockCompanyTrpc(
 
         return trpcSuccess({
           description: options.generatedDescription
-            ?? `${name} uses ${domain} and needs finance and AR visibility into customer exposure, payment timing, collections pressure, and cash-flow risk.`,
+            ?? `${name} is a company operating through ${domain}. For finance/AR relevance, key exposure areas are customer exposure, payment timing, collections pressure, cash-flow sensitivity, operational dependency, and legal/regulatory risk.`,
         })
       }
 

@@ -20,14 +20,14 @@ describe('buildRelevancyPrompt', () => {
         name: 'Merclex',
         domain: 'merclex.example',
         roleFunction: 'Finance Manager / AR Manager',
-        description: 'Merclex monitors customer health, payment timing, and collections exposure.',
+        description: 'Merclex is a company operating through merclex.example. For finance/AR relevance, key exposure areas are customer exposure, payment timing, and collections pressure.',
       },
     })
 
     expect(prompt).toContain('Viewer company:')
     expect(prompt).toContain('- Name: Merclex')
     expect(prompt).toContain('- Domain: merclex.example')
-    expect(prompt).toContain('- Description: Merclex monitors customer health, payment timing, and collections exposure.')
+    expect(prompt).toContain('- Description: Merclex is a company operating through merclex.example. For finance/AR relevance, key exposure areas are customer exposure, payment timing, and collections pressure.')
     expect(prompt).toContain('- Role/function: Finance Manager / AR Manager')
     expect(prompt).toContain('The numeric relevancyScore and category must reflect only how relevant the article is to the researched company below.')
     expect(prompt).toContain('Explain the impact to the viewer company from a Finance Manager / AR Manager perspective')
