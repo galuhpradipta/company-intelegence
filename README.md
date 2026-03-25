@@ -9,6 +9,7 @@ A micro-app that resolves company identities, fetches news, and scores article r
 - Want to understand the request pipeline: read [End-to-End Flow](#end-to-end-flow)
 - Want the best entry points into the code: jump to [Where to Start in Code](#where-to-start-in-code)
 - Want provider quotas and free-tier constraints: see [Provider Access Notes](#provider-access-notes)
+- Want to deploy to Railway: read [docs/railway-deployment.md](./docs/railway-deployment.md)
 
 ## What This App Does
 
@@ -75,7 +76,7 @@ pnpm start
 | `pnpm dev` | Start frontend only |
 | `pnpm server:dev` | Start backend only |
 | `pnpm db:migrate` | Apply Drizzle migrations |
-| `pnpm build` | Build frontend and backend |
+| `pnpm build` | Build frontend assets and emit the production server bundle |
 | `pnpm start` | Run the production build locally |
 | `pnpm test -- --run tests/unit` | Run core unit tests |
 | `pnpm test:e2e` | Run browser-mocked Playwright tests |
@@ -488,11 +489,24 @@ Checked against provider docs on March 24, 2026:
 
 ## Deployment (Railway)
 
-1. Create a Railway project
-2. Add a PostgreSQL service — Railway exposes `DATABASE_URL` automatically
-3. Add a Node web service pointing to this repo
-4. Set build command: `pnpm install --frozen-lockfile && pnpm build`
-5. Set start command: `pnpm start`
-6. Add environment variables: `OPENAI_API_KEY`, plus any of `GNEWS_API_KEY`, `NEWS_API_KEY`, `PEOPLE_DATA_LABS_API_KEY`, `OPENCORPORATES_API_KEY` that you plan to use
-7. After first deploy, run migrations: `railway run pnpm db:migrate`
-8. Verify: `GET /api/health`
+This repo now ships with a root [`railway.json`](./railway.json) configured for a CLI-first Railway deploy:
+
+- Builder: `RAILPACK`
+- Start command: `node dist/server/index.js`
+- Healthcheck path: `/api/health/live`
+- Replicas: `1`
+- Restart policy: `ON_FAILURE`
+
+Quick path:
+
+1. Install the Railway CLI with `brew install railway` or `npm i -g @railway/cli`
+2. Run `railway login`
+3. Run `railway init`
+4. Run `railway add -d postgres`
+5. Set `OPENAI_API_KEY` and any optional provider keys on the app service
+6. Set the app service `DATABASE_URL` to `\${{Postgres.DATABASE_URL}}` or the equivalent for your PostgreSQL service name
+7. Run `railway up`
+8. Run `railway run -s <web-service-name> pnpm db:migrate`
+9. Verify `GET /api/health/live` and `GET /api/health/ready`
+
+Use [`docs/railway-deployment.md`](./docs/railway-deployment.md) for the full CLI workflow, day-2 commands, and current operational caveats.

@@ -5,7 +5,7 @@
   "type": "module",
   "scripts": {
     "dev": "vp dev",
-    "build": "tsc -b && vp build",
+    "build": "tsc -b && vp build && tsc -p tsconfig.server.build.json",
     "lint": "eslint .",
     "preview": "vp preview",
     "prepare": "vp config",
