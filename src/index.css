@@ -17,11 +17,14 @@
   --color-app-border-subtle: #f0ebe5;
   --color-app-accent: #0f766e;
   --color-app-accent-light: #14b8a6;
+  --color-app-accent-soft: #e6f5f2;
+  --color-app-accent-ghost: #f3fbf9;
   --color-app-accent-dim: #115e59;
   --color-app-text: #1c1917;
   --color-app-text-muted: #57534e;
   --color-app-text-dim: #78716c;
   --color-app-red: #dc2626;
+  --color-app-red-soft: #fef2f2;
   --color-app-green: #15803d;
 }
 

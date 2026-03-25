@@ -276,7 +276,7 @@ export function CompanyDetailPage() {
           <div>
             <h2 className="font-display text-lg font-medium text-app-text tracking-tight">News</h2>
             {articles.length > 0 && !fetchingNews && (
-              <p className="text-xs text-stone-400 mt-0.5">{articles.length} article{articles.length !== 1 ? 's' : ''} found</p>
+              <p className="mt-0.5 text-xs text-app-text-dim">{articles.length} article{articles.length !== 1 ? 's' : ''} found</p>
             )}
           </div>
           <div className="flex items-center gap-3 flex-wrap justify-end">
@@ -285,13 +285,13 @@ export function CompanyDetailPage() {
                 type="button"
                 onClick={() => void triggerNewsFetch(companyId!, loadStoredViewerCompanyProfile())}
                 disabled={fetchingNews}
-                className="rounded-lg border border-teal-200 bg-teal-50 px-3.5 py-2 text-sm font-semibold text-teal-700 transition-colors hover:bg-teal-100 disabled:cursor-not-allowed disabled:opacity-60"
+                className="rounded-xl border border-app-border bg-app-bg px-3.5 py-2.5 text-sm font-semibold text-app-accent transition-colors hover:bg-app-accent-soft disabled:cursor-not-allowed disabled:opacity-60"
               >
                 {fetchingNews ? 'Refreshing…' : 'Refresh With My Company'}
               </button>
             )}
             {totalArticles > 0 && (
-              <label className="flex items-center gap-2 text-sm text-stone-500 shrink-0 cursor-pointer">
+              <label className="flex shrink-0 cursor-pointer items-center gap-2 text-sm text-app-text-muted">
                 <input
                   type="checkbox"
                   checked={showAll}
@@ -306,24 +306,24 @@ export function CompanyDetailPage() {
 
         {/* News fetching progress banner */}
         {fetchingNews && (
-          <div className="rounded-xl border border-teal-200 bg-teal-50 px-5 py-4 mb-4 animate-fade-up">
+          <div className="mb-4 animate-fade-up rounded-2xl border border-app-border bg-app-surface px-5 py-4 shadow-sm">
             <div className="flex items-start gap-3">
               <div className="mt-0.5 shrink-0">
                 <Spinner size="sm" />
               </div>
               <div className="flex-1 min-w-0">
-                <div className="text-sm font-semibold text-teal-800 mb-1">Fetching &amp; scoring news</div>
+                <div className="mb-1 text-sm font-semibold text-app-text">Fetching &amp; scoring news</div>
                 <div className="h-4">
                   <p
-                    className="text-xs text-teal-600 transition-all duration-300"
+                    className="text-xs text-app-text-muted transition-all duration-300"
                     style={{ opacity: newsStepVisible ? 1 : 0, transform: newsStepVisible ? 'translateY(0)' : 'translateY(3px)' }}
                   >
                     {NEWS_STEPS[newsStepIndex]}
                   </p>
                 </div>
                 {/* Indeterminate progress bar */}
-                <div className="mt-2 w-full h-1.5 bg-teal-100 rounded-full overflow-hidden">
-                  <div className="h-full w-1/3 bg-teal-500 rounded-full shimmer-bar" style={{ width: '40%' }} />
+                <div className="mt-2 h-1.5 w-full overflow-hidden rounded-full bg-app-border-subtle">
+                  <div className="shimmer-bar h-full w-1/3 rounded-full bg-app-accent" style={{ width: '40%' }} />
                 </div>
               </div>
             </div>

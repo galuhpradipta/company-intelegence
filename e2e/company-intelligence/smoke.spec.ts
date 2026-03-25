@@ -4,7 +4,7 @@ test("Company Intelligence input view renders the core trial entry points", asyn
   await page.goto("/");
 
   await expect(page.getByRole("heading", { name: "Resolve Companies" })).toBeVisible();
-  await expect(page.getByText("My Company Context")).toBeVisible();
+  await expect(page.getByRole("button", { name: /My Company Context/i })).toBeVisible();
   await expect(page.getByRole("tab", { name: "Single Company" })).toBeVisible();
   await expect(page.getByRole("tab", { name: "CSV Upload" })).toBeVisible();
   await expect(page.getByPlaceholder("e.g. Apple Inc.")).toBeVisible();

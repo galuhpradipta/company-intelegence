@@ -25,10 +25,14 @@ const FALLBACK_PROFILE = createViewerCompanyProfileInput({
 
 let defaultViewerCompanyProfilePromise: Promise<ViewerCompanyProfileInput> | null = null
 
-const inputClass = 'w-full border border-stone-300 rounded-lg px-3 py-2 text-sm text-app-text bg-white focus:outline-none focus-visible:ring-2 focus-visible:ring-app-accent focus:border-transparent transition-colors placeholder:text-stone-400'
+const inputClass = 'w-full rounded-xl border border-app-border bg-app-surface px-3.5 py-2.5 text-sm text-app-text transition-[border-color,box-shadow,background-color] placeholder:text-app-text-dim focus:outline-none focus-visible:ring-2 focus-visible:ring-app-accent focus:border-transparent disabled:cursor-not-allowed disabled:bg-app-bg disabled:text-app-text-dim'
+const secondaryButtonClass = 'inline-flex items-center gap-2 rounded-xl border border-app-border bg-app-bg px-3.5 py-2.5 text-sm font-semibold text-app-accent transition-colors hover:bg-app-accent-soft disabled:cursor-not-allowed disabled:opacity-60'
+const primaryButtonClass = 'inline-flex items-center gap-2 rounded-xl bg-app-accent px-4 py-2.5 text-sm font-semibold text-white transition-colors hover:bg-app-accent-dim disabled:cursor-not-allowed disabled:opacity-60'
+const tertiaryButtonClass = 'rounded-xl border border-app-border bg-app-surface px-3.5 py-2.5 text-sm font-semibold text-app-text-muted transition-colors hover:bg-app-surface-hover hover:text-app-text disabled:cursor-not-allowed disabled:opacity-60'
 
 export function ViewerCompanyContextCard({ mode = 'input', onSaveProfile }: Props) {
   const [form, setForm] = useState<ViewerCompanyProfileInput>(FALLBACK_PROFILE)
+  const [isExpanded, setIsExpanded] = useState(mode === 'detail')
   const [hasSavedLocally, setHasSavedLocally] = useState(false)
   const [loadingProfile, setLoadingProfile] = useState(true)
   const [generatingDescription, setGeneratingDescription] = useState(false)
@@ -181,156 +185,266 @@ export function ViewerCompanyContextCard({ mode = 'input', onSaveProfile }: Prop
   }
 
   const headerCopy = mode === 'detail'
-    ? 'Update the browser-local company context here and the open company will refresh immediately with the new prompting profile.'
-    : 'Save your company context in this browser so future company detail pages can personalize pulled-news explanations.'
+    ? 'Update the saved browser profile here. Saving immediately refreshes the open company with your current finance and AR context.'
+    : 'Save your company context in this browser so company detail pages can explain pulled news from your finance and AR perspective.'
   const badgeLabel = hasSavedLocally ? 'Saved in browser' : 'Default seed profile'
   const saveLabel = mode === 'detail' ? 'Save & Refresh News' : 'Save Locally'
   const canSave = !loadingProfile && !generatingDescription && !savingProfile
+  const actionSummary = mode === 'detail'
+    ? 'Refresh rewrites the explanation for the open company using this browser profile.'
+    : 'This profile is ready the next time you open a company detail page.'
+  const summaryCompanyName = form.name.trim() || 'Set your company context'
+  const summaryDomain = form.domain.trim() || 'No domain saved yet'
+  const accordionId = `${fieldId}-panel`
 
   return (
     <section
       aria-label="My Company Context"
-      className="mb-6 rounded-2xl border border-teal-200 bg-gradient-to-br from-teal-50 via-white to-stone-50 p-5 shadow-sm"
+      className="relative mb-6 overflow-hidden rounded-[28px] border border-app-border bg-app-surface p-5 shadow-sm"
     >
-      <div className="flex items-start justify-between gap-4 flex-wrap">
-        <div>
-          <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-teal-700">
-            My Company Context
-          </p>
-          <h2 className="mt-1 font-display text-lg font-medium text-app-text tracking-tight">
-            Personalized News Prompting
-          </h2>
-          <p className="mt-1 text-sm leading-relaxed text-stone-600 max-w-3xl">
-            {headerCopy}
-          </p>
-        </div>
-        <span className="rounded-full border border-teal-200 bg-white/80 px-3 py-1 text-xs font-semibold text-teal-700">
-          {badgeLabel}
-        </span>
-      </div>
+      <div
+        aria-hidden="true"
+        className="pointer-events-none absolute inset-x-0 top-0 h-28 bg-gradient-to-r from-app-accent-soft via-app-surface to-app-bg"
+      />
 
-      <div className="mt-4 grid gap-4 lg:grid-cols-[minmax(0,1.2fr)_minmax(0,0.8fr)]">
-        <div className="space-y-4 rounded-2xl border border-white/70 bg-white/85 p-4">
-          <div className="grid gap-3 sm:grid-cols-2">
-            <div>
-              <label htmlFor={`${fieldId}-name`} className="block text-sm font-medium text-stone-700 mb-1">
-                Company Name
-              </label>
-              <input
-                id={`${fieldId}-name`}
-                type="text"
-                value={form.name}
-                onChange={(e) => setField('name', e.target.value)}
-                placeholder="e.g. Merclex"
-                className={inputClass}
-                disabled={loadingProfile || savingProfile}
-              />
+      <div className="relative">
+        <button
+          type="button"
+          aria-expanded={isExpanded}
+          aria-controls={accordionId}
+          onClick={() => setIsExpanded((current) => !current)}
+          className="group flex w-full items-start justify-between gap-4 rounded-[24px] border border-app-border-subtle bg-app-bg/75 px-4 py-4 text-left transition-colors hover:border-app-border hover:bg-app-surface-hover"
+        >
+          <div className="min-w-0 flex-1">
+            <div className="flex items-center gap-2 flex-wrap">
+              <p className="text-[11px] font-semibold uppercase tracking-[0.2em] text-app-accent">
+                Personalized News Prompting
+              </p>
+              <span className="rounded-full border border-app-border bg-app-surface px-2.5 py-1 text-[11px] font-semibold text-app-accent">
+                {badgeLabel}
+              </span>
             </div>
-            <div>
-              <label htmlFor={`${fieldId}-domain`} className="block text-sm font-medium text-stone-700 mb-1">
-                Domain
-              </label>
-              <input
-                id={`${fieldId}-domain`}
-                type="text"
-                value={form.domain}
-                onChange={(e) => setField('domain', e.target.value)}
-                placeholder="e.g. merclex.com"
-                className={inputClass}
-                disabled={loadingProfile || savingProfile}
+            <div className="mt-2 flex flex-wrap items-end gap-x-4 gap-y-2">
+              <div>
+                <h2 className="font-display text-[1.45rem] leading-none font-medium text-app-text tracking-tight">
+                  My Company Context
+                </h2>
+                <p className="mt-1 text-sm text-app-text-muted">
+                  {headerCopy}
+                </p>
+              </div>
+            </div>
+            <div className="mt-4 grid gap-3 sm:grid-cols-[minmax(0,1.25fr)_minmax(0,0.9fr)_auto]">
+              <SummaryTile label="Company" value={summaryCompanyName} subtle={summaryDomain} />
+              <SummaryTile label="Role" value={VIEWER_COMPANY_ROLE_FUNCTION} subtle="Used to personalize explanation tone" />
+              <SummaryTile
+                label="Stored"
+                value={hasSavedLocally ? 'Browser-local' : 'Default seed'}
+                subtle={isExpanded ? 'Hide editor' : 'Open editor'}
               />
             </div>
           </div>
 
-          <div>
-            <label htmlFor={`${fieldId}-role`} className="block text-sm font-medium text-stone-700 mb-1">
-              Role / Function
-            </label>
-            <input
-              id={`${fieldId}-role`}
-              type="text"
-              value={form.roleFunction}
-              readOnly
-              className={`${inputClass} bg-stone-50 text-stone-500`}
-            />
-          </div>
-
-          <div>
-            <label htmlFor={`${fieldId}-description`} className="block text-sm font-medium text-stone-700 mb-1">
-              Company Summary
-            </label>
-            <textarea
-              id={`${fieldId}-description`}
-              value={form.description}
-              onChange={(e) => setField('description', e.target.value)}
-              placeholder="Generate or edit the summary used in news prompting."
-              rows={4}
-              className={`${inputClass} resize-none`}
-              disabled={loadingProfile || savingProfile}
-            />
-            <p className="mt-1 text-xs text-stone-400">
-              This summary is stored only in this browser for now.
-            </p>
-          </div>
-
-          <div className="flex flex-wrap gap-2">
-            <button
-              type="button"
-              onClick={() => void handleGenerateDescription()}
-              disabled={loadingProfile || generatingDescription || savingProfile}
-              className="inline-flex items-center gap-2 rounded-lg border border-teal-200 bg-teal-50 px-3.5 py-2 text-sm font-semibold text-teal-700 transition-colors hover:bg-teal-100 disabled:cursor-not-allowed disabled:opacity-60"
+          <div className="flex shrink-0 items-center gap-3 pt-1">
+            <span className="hidden rounded-full border border-app-border-subtle bg-app-surface px-3 py-1 text-xs font-medium text-app-text-muted sm:inline-flex">
+              {isExpanded ? 'Collapse' : 'Configure'}
+            </span>
+            <span
+              aria-hidden="true"
+              className={`inline-flex h-10 w-10 items-center justify-center rounded-full border border-app-border bg-app-surface text-app-accent transition-transform duration-200 ${isExpanded ? 'rotate-180' : ''}`}
             >
-              {generatingDescription ? <Spinner size="sm" /> : null}
-              {generatingDescription ? 'Generating…' : 'Generate with AI'}
-            </button>
-            <button
-              type="button"
-              onClick={() => void handleSaveProfile()}
-              disabled={!canSave}
-              className="inline-flex items-center gap-2 rounded-lg bg-app-accent px-4 py-2 text-sm font-semibold text-white transition-colors hover:bg-app-accent-dim disabled:cursor-not-allowed disabled:opacity-60"
-            >
-              {savingProfile ? <Spinner size="sm" /> : null}
-              {savingProfile ? 'Saving…' : saveLabel}
-            </button>
-            <button
-              type="button"
-              onClick={handleResetProfile}
-              disabled={loadingProfile || generatingDescription || savingProfile}
-              className="rounded-lg border border-stone-200 bg-white px-3.5 py-2 text-sm font-semibold text-stone-500 transition-colors hover:border-stone-300 hover:text-stone-700 disabled:cursor-not-allowed disabled:opacity-60"
-            >
-              Reset
-            </button>
+              <svg viewBox="0 0 20 20" fill="none" className="h-4 w-4">
+                <path d="M5 7.5L10 12.5L15 7.5" stroke="currentColor" strokeWidth="1.7" strokeLinecap="round" strokeLinejoin="round" />
+              </svg>
+            </span>
           </div>
+        </button>
 
-          {statusMessage && (
-            <div role="status" className="rounded-lg border border-teal-200 bg-teal-50 px-3 py-2 text-sm text-teal-700">
-              {statusMessage}
+        {isExpanded && (
+          <div id={accordionId} className="mt-4">
+            <div className="grid gap-3 sm:grid-cols-3">
+              <InfoTile
+                label="Stored"
+                title={hasSavedLocally ? 'Local browser profile' : 'Default seed profile'}
+                body="Nothing here syncs across devices yet. This browser is the only source of truth in the POC."
+              />
+              <InfoTile
+                label="Prompt focus"
+                title="Finance and AR context"
+                body="The summary steers payment timing, collections exposure, cash-flow impact, and operational risk analysis."
+              />
+              <InfoTile
+                label="What stays global"
+                title="Matching and ranking"
+                body="Company matching, numeric relevance, and ordering still come from the existing shared scoring pipeline."
+              />
             </div>
-          )}
-          {errorMessage && (
-            <div role="alert" className="rounded-lg border border-red-200 bg-red-50 px-3 py-2 text-sm text-red-700">
-              {errorMessage}
-            </div>
-          )}
-        </div>
 
-        <div className="rounded-2xl border border-white/70 bg-white/80 p-4">
-          <div className="text-xs font-semibold uppercase tracking-[0.16em] text-stone-400">
-            What This Affects
+            <div className="mt-4 rounded-[24px] border border-app-border-subtle bg-app-bg/70 p-4 sm:p-5">
+              <div className="grid gap-3 sm:grid-cols-2">
+                <div>
+                  <label htmlFor={`${fieldId}-name`} className="mb-1.5 block text-sm font-medium text-app-text">
+                    Company Name <span aria-hidden="true" className="text-app-red">*</span>
+                  </label>
+                  <input
+                    id={`${fieldId}-name`}
+                    type="text"
+                    value={form.name}
+                    onChange={(e) => setField('name', e.target.value)}
+                    placeholder="e.g. Merclex"
+                    className={inputClass}
+                    disabled={loadingProfile || savingProfile}
+                    aria-required="true"
+                  />
+                </div>
+                <div>
+                  <label htmlFor={`${fieldId}-domain`} className="mb-1.5 block text-sm font-medium text-app-text">
+                    Domain <span aria-hidden="true" className="text-app-red">*</span>
+                  </label>
+                  <input
+                    id={`${fieldId}-domain`}
+                    type="text"
+                    value={form.domain}
+                    onChange={(e) => setField('domain', e.target.value)}
+                    placeholder="e.g. merclex.com"
+                    className={inputClass}
+                    disabled={loadingProfile || savingProfile}
+                    aria-required="true"
+                  />
+                </div>
+              </div>
+
+              <div className="mt-3">
+                <label htmlFor={`${fieldId}-role`} className="mb-1.5 block text-sm font-medium text-app-text">
+                  Role / Function
+                </label>
+                <input
+                  id={`${fieldId}-role`}
+                  type="text"
+                  value={form.roleFunction}
+                  readOnly
+                  className={`${inputClass} bg-app-bg text-app-text-dim`}
+                />
+              </div>
+
+              <div className="mt-3">
+                <div className="flex items-end justify-between gap-3 flex-wrap">
+                  <label htmlFor={`${fieldId}-description`} className="block text-sm font-medium text-app-text">
+                    Company Summary
+                  </label>
+                  <p className="text-xs text-app-text-dim">
+                    Stored only in this browser for now.
+                  </p>
+                </div>
+                <textarea
+                  id={`${fieldId}-description`}
+                  value={form.description}
+                  onChange={(e) => setField('description', e.target.value)}
+                  placeholder="Generate or edit the summary used in news prompting."
+                  rows={4}
+                  className={`${inputClass} mt-1.5 resize-none`}
+                  disabled={loadingProfile || savingProfile}
+                />
+                <p className="mt-2 text-xs leading-relaxed text-app-text-dim">
+                  Keep this short and practical. Focus on customers, payment behavior, collections risk, cash flow, and any operational constraints the prompt should care about.
+                </p>
+              </div>
+
+              <div className="mt-4 flex flex-wrap gap-2">
+                <button
+                  type="button"
+                  onClick={() => void handleGenerateDescription()}
+                  disabled={loadingProfile || generatingDescription || savingProfile}
+                  className={secondaryButtonClass}
+                >
+                  {generatingDescription ? <Spinner size="sm" /> : null}
+                  {generatingDescription ? 'Generating…' : 'Generate with AI'}
+                </button>
+                <button
+                  type="button"
+                  onClick={() => void handleSaveProfile()}
+                  disabled={!canSave}
+                  className={primaryButtonClass}
+                >
+                  {savingProfile ? <Spinner size="sm" /> : null}
+                  {savingProfile ? 'Saving…' : saveLabel}
+                </button>
+                <button
+                  type="button"
+                  onClick={handleResetProfile}
+                  disabled={loadingProfile || generatingDescription || savingProfile}
+                  className={tertiaryButtonClass}
+                >
+                  Reset
+                </button>
+              </div>
+
+              <p className="mt-3 text-xs leading-relaxed text-app-text-dim">
+                {actionSummary}
+              </p>
+
+              {statusMessage && (
+                <div role="status" className="mt-4 rounded-xl border border-app-accent-light bg-app-accent-soft px-3.5 py-3 text-sm text-app-accent">
+                  {statusMessage}
+                </div>
+              )}
+              {errorMessage && (
+                <div role="alert" className="mt-4 rounded-xl border border-app-red bg-app-red-soft px-3.5 py-3 text-sm text-app-red">
+                  {errorMessage}
+                </div>
+              )}
+            </div>
           </div>
-          <div className="mt-3 space-y-3 text-sm leading-relaxed text-stone-600">
-            <p>
-              Saved values shape how pulled third-party news is explained for your company from a finance and AR perspective.
-            </p>
-            <p>
-              The researched company match, numeric relevance score, and article ranking still come from the existing pipeline.
-            </p>
-            <p>
-              Description edits help the prompt focus on payment timing, collections exposure, customer health, cash-flow impact, and operational risk.
-            </p>
-          </div>
-        </div>
+        )}
       </div>
     </section>
+  )
+}
+
+function SummaryTile({
+  label,
+  value,
+  subtle,
+}: {
+  label: string
+  value: string
+  subtle: string
+}) {
+  return (
+    <div className="rounded-2xl border border-app-border-subtle bg-app-surface px-3.5 py-3">
+      <div className="text-[11px] font-semibold uppercase tracking-[0.16em] text-app-text-dim">
+        {label}
+      </div>
+      <div className="mt-1 truncate text-sm font-semibold text-app-text">
+        {value}
+      </div>
+      <div className="mt-1 truncate text-xs text-app-text-dim">
+        {subtle}
+      </div>
+    </div>
+  )
+}
+
+function InfoTile({
+  label,
+  title,
+  body,
+}: {
+  label: string
+  title: string
+  body: string
+}) {
+  return (
+    <div className="rounded-2xl border border-app-border-subtle bg-app-bg/75 p-4">
+      <div className="text-[11px] font-semibold uppercase tracking-[0.16em] text-app-text-dim">
+        {label}
+      </div>
+      <div className="mt-2 text-sm font-semibold text-app-text">
+        {title}
+      </div>
+      <p className="mt-1 text-sm leading-relaxed text-app-text-muted">
+        {body}
+      </p>
+    </div>
   )
 }

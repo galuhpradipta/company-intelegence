@@ -234,8 +234,8 @@ test('single-company resolve opens the company detail view and shows address plu
 
   const viewerCompanySection = page.getByRole('region', { name: 'My Company Context' })
   await expect(viewerCompanySection).toBeVisible()
-  await expect(viewerCompanySection.getByLabel('Company Name')).toHaveValue('Merclex')
-  await expect(viewerCompanySection.getByLabel('Domain')).toHaveValue('merclex.example')
+  await expect(viewerCompanySection.getByText('Merclex', { exact: true })).toBeVisible()
+  await expect(viewerCompanySection.getByText('merclex.example')).toBeVisible()
   await page.getByPlaceholder('e.g. Apple Inc.').fill('Apple Inc.')
   await page.getByPlaceholder('e.g. apple.com').fill('apple.com')
   await page.getByPlaceholder('1 Apple Park Way').fill('1 Apple Park Way')
@@ -323,6 +323,7 @@ test('input page saves my company locally and restores it after reload', async (
   await page.goto('/')
 
   const viewerCompanySection = page.getByRole('region', { name: 'My Company Context' })
+  await viewerCompanySection.getByRole('button', { name: /My Company Context/i }).click()
   await viewerCompanySection.getByLabel('Company Name').fill('Northwind Credit')
   await viewerCompanySection.getByLabel('Domain').fill('northwind.test')
   await viewerCompanySection.getByLabel('Company Summary').fill('Northwind Credit tracks customer payment timing, collections pressure, and cash-flow exposure.')
@@ -333,6 +334,7 @@ test('input page saves my company locally and restores it after reload', async (
   await page.reload()
 
   const reloadedViewerCompanySection = page.getByRole('region', { name: 'My Company Context' })
+  await reloadedViewerCompanySection.getByRole('button', { name: /My Company Context/i }).click()
   await expect(reloadedViewerCompanySection.getByLabel('Company Name')).toHaveValue('Northwind Credit')
   await expect(reloadedViewerCompanySection.getByLabel('Domain')).toHaveValue('northwind.test')
   await expect(reloadedViewerCompanySection.getByLabel('Company Summary')).toHaveValue('Northwind Credit tracks customer payment timing, collections pressure, and cash-flow exposure.')
@@ -390,6 +392,7 @@ test('opening a company detail page auto-refreshes news with the saved browser p
   await page.goto('/')
 
   const viewerCompanySection = page.getByRole('region', { name: 'My Company Context' })
+  await viewerCompanySection.getByRole('button', { name: /My Company Context/i }).click()
   await viewerCompanySection.getByLabel('Company Name').fill('Northwind Credit')
   await viewerCompanySection.getByLabel('Domain').fill('northwind.test')
   await viewerCompanySection.getByLabel('Company Summary').fill('Northwind Credit needs finance and AR guidance on customer exposure, collections pressure, and payment timing.')
